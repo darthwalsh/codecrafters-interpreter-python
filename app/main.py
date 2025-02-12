@@ -1,5 +1,6 @@
 import sys
 
+from app.scanner import Scanner, ScannerError
 
 def main():
     if len(sys.argv) < 3:
@@ -16,12 +17,15 @@ def main():
     with open(filename) as file:
         file_contents = file.read()
 
-    print("Logs from your program will appear here!", file=sys.stderr)
+    print("Tokenizing", len(file_contents), "chars", file=sys.stderr)
 
-    if file_contents:
-        raise NotImplementedError("Scanner not implemented")
-    else:
-        print("EOF  null")  # Placeholder, remove this line when implementing the scanner
+    scanner = Scanner(file_contents)
+    try:
+        for token in scanner.scan_tokens():
+            print(token)
+    except ScannerError as e:
+        print(f"Scanner error: {e}", file=sys.stderr)
+        exit(1)
 
 
 if __name__ == "__main__":
