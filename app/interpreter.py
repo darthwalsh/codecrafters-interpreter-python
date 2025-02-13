@@ -1,3 +1,4 @@
+import math
 from typing import IO, override
 from app.expression import Expr, Binary, Grouping, Literal, Unary, Visitor
 from app.scanner import TokenType as TT
@@ -24,8 +25,38 @@ class Interpreter(Visitor[object]):
 
     @override
     def visit_binary(self, binary: Binary):
-        raise NotImplementedError
-        # return self.parens(binary.operator.lexeme, binary.left, binary.right)
+        left, right = self.evaluate(binary.left), self.evaluate(binary.right)
+        match binary.operator.type:
+            case TT.BANG_EQUAL:
+                return left != right
+            case TT.EQUAL_EQUAL:
+                return left == right
+
+            case TT.GREATER:
+                return left > right
+            case TT.GREATER_EQUAL:
+                return left >= right
+            case TT.LESS:
+                return left < right
+            case TT.LESS_EQUAL:
+                return left <= right
+
+            case TT.MINUS:
+                return left - right
+            case TT.PLUS:
+                return left + right
+            case TT.SLASH:
+                try:
+                    return left / right
+                except ZeroDivisionError:
+                    if not left: # 0/0
+                        return math.nan
+                    return left * math.inf
+            case TT.STAR:
+                return left * right
+
+            case _:
+                raise RuntimeError("Impossible state")
 
     @override
     def visit_grouping(self, grouping: Grouping):
@@ -45,6 +76,7 @@ class Interpreter(Visitor[object]):
                 return not self.truthy(right)
             case _:
                 raise RuntimeError("Impossible state")
-            
+
     def truthy(self, o: object):
+        """Ruby semantics"""
         return o not in (False, None)
