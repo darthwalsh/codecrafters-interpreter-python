@@ -32,7 +32,7 @@ class Parser:
         if not self.at_end():
             self.error(self.peek(), "Expected end of expression")  # don't raise here
         return e
-    
+
     def at_end(self):
         return self.peek().type == TT.EOF
 
@@ -52,14 +52,25 @@ class Parser:
         for t in types:
             if self.peek().type == t:
                 return self.pop()
-            
-    def take(self, message, *types: TokenType, ):
+
+    def take(self, message, *types: TokenType):
         if not (t := self.try_take(*types)):
             raise self.error(self.peek(), message)
         return t
-            
 
-    ### Statements Parsing ###
+    """
+        https://craftinginterpreters.com/appendix-i.html
+
+        Statement Grammar
+
+program        → declaration* EOF ;
+declaration    → statement ;
+statement      → exprStmt
+               | printStmt ;
+exprStmt       → expression ";" ;
+printStmt      → "print" expression ";" ;
+    """
+
     def declaration(self):
         try:
             # TODO VAR
@@ -76,8 +87,21 @@ class Parser:
         st = Expression(self.expression())
         self.take("Expect ';' after expression.", TT.SEMICOLON)
         return st
-    
-    ### Expression Parsing ####
+
+    """
+        Expression Grammar
+
+expression     → equality ;
+equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+term           → factor ( ( "-" | "+" ) factor )* ;
+factor         → unary ( ( "/" | "*" ) unary )* ;
+unary          → ( "!" | "-" ) unary
+               | primary ;
+primary        → NUMBER | STRING | "true" | "false" | "nil"
+               | "(" expression ")" ;
+    """
+
     def expression(self):
         return self.equality()
 
@@ -117,7 +141,7 @@ class Parser:
             return Grouping(expr)
 
         raise self.error(self.peek(), "Expect expression")
-    
+
     ### Error Handling ###
     def synchronize(self):
         """Stop after semicolon or before next statement"""
@@ -127,7 +151,6 @@ class Parser:
             match self.pop().type:
                 case TT.CLASS | TT.FUN | TT.VAR | TT.FOR | TT.IF | TT.WHILE | TT.PRINT | TT.RETURN:
                     return
-            
 
     def error(self, token: Token, message: str):
         lexeme = f"'{token.lexeme}'" if token.type != TT.EOF else "end"
@@ -142,6 +165,6 @@ if __name__ == "__main__":
         Token(TT.STAR, "*", 1, None),
         Grouping(Literal(45.67)),
     )
-    
+
     print(AstPrinter().print(Expression(expr)))
     print(AstPrinter().print(Print(expr)))
