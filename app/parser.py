@@ -131,25 +131,27 @@ class Parser:
         return self.equality()
 
     def equality(self):
-        e = self.comparison()
-        while op := self.take(T.BANG_EQUAL, T.EQUAL_EQUAL):
-            e = Binary(e, op, self.comparison())
-        return e
+        return self.take_binary(self.comparison, T.BANG_EQUAL, T.EQUAL_EQUAL)
 
     def comparison(self):
-        return self.term()  # TODO
+        return self.take_binary(self.term, T.GREATER, T.GREATER_EQUAL, T.LESS, T.LESS_EQUAL)
 
     def term(self):
-        e = self.factor()
-        while op := self.take(T.MINUS, T.PLUS):
-            e = Binary(e, op, self.factor())
-        return e
+        return self.take_binary(self.factor, T.MINUS, T.PLUS)
 
     def factor(self):
-        return self.unary()  # TODO
+        return self.take_binary(self.unary, T.STAR, T.SLASH)
 
     def unary(self):
-        return self.primary()  # TODO
+        if op := self.take(T.BANG, T.MINUS):
+            return Unary(op, self.unary())
+        return self.primary()
+
+    def take_binary(self, f, *types):
+        e = f()
+        while op := self.take(*types):
+            e = Binary(e, op, f())
+        return e
 
     def primary(self):
         if e := self.take(T.NUMBER, T.STRING, T.NIL):
@@ -157,8 +159,14 @@ class Parser:
 
         if e := self.take(T.TRUE, T.FALSE):
             return Literal(e.type == T.TRUE)
+        
+        if e := self.take(T.LEFT_PAREN):
+            expr = self.expression()
+            if not self.take(T.RIGHT_PAREN):
+                raise self.error(e, "Expect ')' after expression")
+            return Grouping(expr)
 
-        raise NotImplementedError
+        raise self.error(self.peek(), "Expect expression")
 
     def error(self, token: Token, message: str):
         self.has_error = True

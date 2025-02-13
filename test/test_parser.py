@@ -13,6 +13,8 @@ class TestScanner(unittest.TestCase):
     def test_primary(self):
         self.validate("1", "1.0")
         self.validate('"ab"', "ab")
+        self.validate("(true)", "(group true)")
+        self.validate("((true))", "(group (group true))")
 
     def test_equality(self):
         self.validate("1 == 1", "(== 1.0 1.0)")
@@ -20,6 +22,14 @@ class TestScanner(unittest.TestCase):
 
     def test_term(self):
         self.validate("1 + 2", "(+ 1.0 2.0)")
+
+    def test_factor(self):
+        self.validate("1 * 2 + 3", "(+ (* 1.0 2.0) 3.0)")
+        self.validate("1 - 2 / 3", "(- 1.0 (/ 2.0 3.0))")
+
+    def test_unary(self):
+        self.validate("!1", "(! 1.0)")
+        self.validate("!!1", "(! (! 1.0))")
 
     def test_trailing(self):
         tokens = Scanner("1 1").scan_tokens()
