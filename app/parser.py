@@ -32,9 +32,9 @@ class Expr(ABC):
 
 @dataclass(frozen=True)
 class Binary(Expr):
-    left: object
+    left: Expr
     operator: Token
-    right: object
+    right: Expr
 
     # Don't need @override accept() because it's dynamically dispatched in parent class
     # def accept(self, visitor: Visitor):
@@ -43,7 +43,7 @@ class Binary(Expr):
 
 @dataclass(frozen=True)
 class Grouping(Expr):
-    value: object
+    value: Expr
 
 
 @dataclass(frozen=True)
@@ -54,7 +54,7 @@ class Literal(Expr):
 @dataclass(frozen=True)
 class Unary(Expr):
     operator: Token
-    right: object
+    right: Expr
 
 
 class AstPrinter(Visitor[str]):

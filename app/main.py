@@ -1,5 +1,7 @@
+from contextlib import contextmanager
 import sys
 
+from app.interpreter import Interpreter
 from app.parser import AstPrinter, Parser
 from app.scanner import Scanner
 
@@ -15,41 +17,46 @@ def report(line, where, message):
     print(f"[line {line}] Error{where}: {message}", file=sys.stderr)
 
 
-def main():
-    if len(sys.argv) < 3:
-        print("Usage: ./your_program.sh tokenize <filename>", file=sys.stderr)
-        exit(1)
+@contextmanager
+def step(stage, code):
+    """Run block using stdout or stderr then exit on errors or command"""
+    print(f" {stage.upper()} ".center(20, "="), file=sys.stderr)
+    final = stage == command
+    yield sys.stdout if final else sys.stderr
+    if had_error:
+        sys.exit(code)
+    if final:
+        sys.exit()
+    print(file=sys.stderr)
 
-    _, command, filename = sys.argv
+
+def main():
     with open(filename) as file:
         file_contents = file.read()
 
     scanner = Scanner(file_contents, report)
     tokens = scanner.scan_tokens()
 
-    if command == "tokenize":
+    with step("tokenize", LEXICAL_ERROR_CODE) as out:
         for token in tokens:
-            print(token)
-        exit(had_error * LEXICAL_ERROR_CODE)
-    if had_error:
-        exit(LEXICAL_ERROR_CODE)
-
-    for token in tokens:
-        print(token, file=sys.stderr)
-    print(file=sys.stderr)
+            print(token, file=out)
 
     parser = Parser(tokens, report)
     expr = parser.parse()
-    if had_error:
-        exit(LEXICAL_ERROR_CODE)
+    with step("parse", LEXICAL_ERROR_CODE) as out:
+        if expr:
+            print(AstPrinter().print(expr), file=out)
 
-    if command == "parse":
-        print(AstPrinter().print(expr))
-        return
+    interpreter = Interpreter()
+    with step("evaluate", RUNTIME_ERROR_CODE) as out:
+        interpreter.interpret(expr, out)
 
-    print(f"Unknown command: {command}", file=sys.stderr)
-    exit(1)
+    sys.exit(f"Unknown command: {command}")
 
 
 if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        sys.exit("Usage: ./your_program.sh [tokenize|parse|evaluate] <filename>")
+
+    _, command, filename = sys.argv
     main()
