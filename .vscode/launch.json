@@ -5,11 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Module",
+            "name": "main",
             "type": "debugpy",
             "request": "launch",
             "module": "app.main",
-            "args": ["tokenize", "/tmp/test.lox"]
+            "args": ["parse", "/tmp/test.lox"]
+        },
+        {
+            "name": "parser",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "app.parser"
         }
     ]
 }

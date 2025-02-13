@@ -1,6 +1,7 @@
 import sys
 import logging
 
+from app.parser import AstPrinter, Parser
 from app.scanner import Scanner, Error
 
 logging.basicConfig(
@@ -13,6 +14,7 @@ logging.basicConfig(
 
 
 LEXICAL_ERROR_CODE = 65
+RUNTIME_ERROR_CODE = 70
 
 
 def main():
@@ -21,29 +23,30 @@ def main():
         exit(1)
 
     _, command, filename = sys.argv
-
-    if command == "tokenize":
-        return tokenize(filename)
-    print(f"Unknown command: {command}", file=sys.stderr)
-    exit(1)
-
-    tokenize(filename)
-
-
-def tokenize(filename):
     with open(filename) as file:
         file_contents = file.read()
 
-    logging.info(f"Tokenizing {len(file_contents)} chars")
-
     scanner = Scanner(file_contents)
-    for token in scanner.scan_tokens():
-        if isinstance(token, Error):
+    tokens = scanner.scan_tokens()
+    if command == "tokenize":
+        for token in tokens:
+            if isinstance(token, Error):
+                print(token, file=sys.stderr)
+            else:
+                print(token)
+        exit(scanner.has_error * LEXICAL_ERROR_CODE)
+    else:
+        for token in tokens:
             print(token, file=sys.stderr)
-        else:
-            print(token)
-    if scanner.has_error:
-        sys.exit(LEXICAL_ERROR_CODE)
+        print(file=sys.stderr)
+
+    if command == "parse":
+        parser = Parser(tokens)
+        print(AstPrinter().print(parser.parse()))
+        exit(parser.has_error * RUNTIME_ERROR_CODE)
+
+    print(f"Unknown command: {command}", file=sys.stderr)
+    exit(1)
 
 
 if __name__ == "__main__":

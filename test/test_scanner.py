@@ -13,7 +13,7 @@ class TestScanner(unittest.TestCase):
         )
 
     def lit(self, source, expected):
-        it = Scanner(source).scan_tokens()
+        it = iter(Scanner(source).scan_tokens())
         self.assertEqual(next(it).literal, expected)
         self.assertEqual(next(it).type, T.EOF)
 

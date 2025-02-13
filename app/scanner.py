@@ -157,10 +157,11 @@ class Scanner:
         return True
 
     def scan_tokens(self):
+        tokens = []
         while True:
-            yield (t := self.scan_token())
+            tokens.append(t := self.scan_token())
             if isinstance(t, Token) and t.type == TokenType.EOF:
-                break
+                return tokens
 
     def scan_token(self) -> Token | Error:
         """Unlike the book's scan_token, just return 1 token"""
