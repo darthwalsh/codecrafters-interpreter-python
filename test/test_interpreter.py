@@ -16,7 +16,7 @@ def runtime_error(e):
     errors.append(str(e))
 
 
-class TestScanner(unittest.TestCase):
+class TestInterpreter(unittest.TestCase):
     def parse(self, source):
         # MAYBE have helper for these, with global report
         errors.clear()

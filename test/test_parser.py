@@ -12,7 +12,7 @@ def report(_line, _where, message):
     errors.append(message)
 
 
-class TestScanner(unittest.TestCase):
+class TestParser(unittest.TestCase):
     def parse(self, source):
         errors.clear()
         tokens = Scanner(source, report).scan_tokens()

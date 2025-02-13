@@ -40,11 +40,8 @@ def step(stage):
     print(file=sys.stderr)
 
 
-def main():
-    with open(filename) as file:
-        file_contents = file.read()
-
-    scanner = Scanner(file_contents, report)
+def main(source):
+    scanner = Scanner(source, report)
     tokens = scanner.scan_tokens()
 
     with step("tokenize") as out:
@@ -69,4 +66,7 @@ if __name__ == "__main__":
         sys.exit("Usage: ./your_program.sh [tokenize|parse|evaluate] <filename>")
 
     _, command, filename = sys.argv
-    main()
+
+    with open(filename) as file:
+        file_contents = file.read()
+    main(file_contents)
