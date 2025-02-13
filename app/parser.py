@@ -65,7 +65,7 @@ class Parser:
             # TODO VAR
             return self.statement()
         except ParseError:
-            # TODO self.synchronize()
+            self.synchronize()
             return None
 
     def statement(self):
@@ -117,6 +117,17 @@ class Parser:
             return Grouping(expr)
 
         raise self.error(self.peek(), "Expect expression")
+    
+    ### Error Handling ###
+    def synchronize(self):
+        """Stop after semicolon or before next statement"""
+        while not self.at_end():
+            if self.try_take(TT.SEMICOLON):
+                return
+            match self.pop().type:
+                case TT.CLASS | TT.FUN | TT.VAR | TT.FOR | TT.IF | TT.WHILE | TT.PRINT | TT.RETURN:
+                    return
+            
 
     def error(self, token: Token, message: str):
         lexeme = f"'{token.lexeme}'" if token.type != TT.EOF else "end"

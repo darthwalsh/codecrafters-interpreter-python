@@ -10,18 +10,34 @@ from app.scanner import Scanner
 LEXICAL_ERROR_CODE = 65
 RUNTIME_ERROR_CODE = 70
 
+MAX_ERRORS = 9000
+
 
 exit_code = 0
 
 
+def count_errors():
+    """HACK to quickly crash on infinite error loops"""
+    for _ in range(MAX_ERRORS):
+        yield
+    raise RuntimeError(f"ERRORS OVER {MAX_ERRORS}!!!")
+
+
+error_counter = count_errors()
+
+
 def report(line, where, message):
     global exit_code
+    next(error_counter)
+
     exit_code = LEXICAL_ERROR_CODE
     print(f"[line {line}] Error{where}: {message}", file=sys.stderr)
 
 
 def runtime_error(e):
     global exit_code
+    next(error_counter)
+
     exit_code = RUNTIME_ERROR_CODE
     print(e.message, file=sys.stderr)
     print(f"[line {e.token.line}]", file=sys.stderr)

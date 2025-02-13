@@ -4,7 +4,7 @@ from app.scanner import Scanner
 from app.statement import Stmt
 
 
-errors = []
+errors = []  # HACK useful to have global, but maybe make parse_* below return new errors list
 
 
 def _report(_line, _where, message):

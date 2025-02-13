@@ -41,6 +41,10 @@ class TestParser(unittest.TestCase):
         self.assertEqual(errors, ["Expect ';' after expression."])
         self.assertEqual(AstPrinter().print(e), "print 1.0;")
 
+        e = parse_stmt("print; 3;")
+        self.assertEqual(errors, ["Expect expression"])
+        self.assertEqual(AstPrinter().print(e), "3.0;")
+
     def test_trailing(self):
         e = parse_expr("1 1")
 
