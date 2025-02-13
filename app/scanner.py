@@ -91,7 +91,7 @@ class Token:
 
 
 class Scanner:
-    """Returns tokens and errors"""
+    """Lexes tokens"""
 
     def __init__(self, source: str, report: Callable):
         """Take report() with DI to avoid circular import"""
@@ -149,6 +149,7 @@ class Scanner:
         return True
 
     def scan_tokens(self) -> list[Token]:
+        """Returns list instead of lazy generate that won't have fired events"""
         tokens = []
         while True:
             t = self.scan_token()

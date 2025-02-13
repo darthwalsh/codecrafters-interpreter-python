@@ -49,21 +49,25 @@ def main(source):
             print(token, file=out)
 
     parser = Parser(tokens, report)
-    expr = parser.parse()
-    with step("parse") as out:
-        if expr:
-            print(AstPrinter().print(expr), file=out)
 
-    interpreter = Interpreter(runtime_error)
-    with step("evaluate") as out:
-        interpreter.interpret(expr, out)
+    if command in ("parse", "evaluate"):
+        expr = parser.parse_expr()
+        with step("parse") as out:
+            if expr:
+                print(AstPrinter().print(expr), file=out)
+
+        with step("evaluate") as out:
+            Interpreter(runtime_error, out).interpret(expr)
+
+    with step("run") as out:
+        Interpreter(runtime_error, out).interpret(parser.parse_stmt())
 
     sys.exit(f"Unknown command: {command}")
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        sys.exit("Usage: ./your_program.sh [tokenize|parse|evaluate] <filename>")
+        sys.exit("Usage: ./your_program.sh [tokenize|parse|evaluate|run] <filename>")
 
     _, command, filename = sys.argv
 

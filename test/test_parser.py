@@ -1,25 +1,12 @@
 import unittest
 
 from app.ast import AstPrinter
-from app.scanner import Scanner
-from app.parser import Parser
-
-
-errors = []
-
-
-def report(_line, _where, message):
-    errors.append(message)
+from test.runner import parse, errors, parse_expr, parse_stmt
 
 
 class TestParser(unittest.TestCase):
-    def parse(self, source):
-        errors.clear()
-        tokens = Scanner(source, report).scan_tokens()
-        return Parser(tokens, report).parse() if not errors else None
-
     def validate(self, source, printed):
-        expr = self.parse(source)
+        expr = parse(source)
         self.assertEqual(errors, [])
         self.assertEqual(AstPrinter().print(expr), printed)
 
@@ -44,14 +31,24 @@ class TestParser(unittest.TestCase):
         self.validate("!1", "(! 1.0)")
         self.validate("!!1", "(! (! 1.0))")
 
+    def test_expression(self):
+        self.validate("1;", "1.0;")
+
+    def test_print(self):
+        self.validate("print 1;", "print 1.0;")
+        
+        e = parse_stmt("print 1; 3")
+        self.assertEqual(errors, ["Expect ';' after expression."])
+        self.assertEqual(AstPrinter().print(e), "print 1.0;")
+
     def test_trailing(self):
-        e = self.parse("1 1")
+        e = parse_expr("1 1")
 
         self.assertEqual(errors, ["Expected end of expression"])
         self.assertEqual(AstPrinter().print(e), "1.0")
 
     def test_trailing_after_parens(self):
-        e = self.parse("(72 +)")
+        e = parse_expr("(72 +)")
 
         self.assertEqual(errors, ["Expect expression"])
         self.assertIsNone(e)

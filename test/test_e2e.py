@@ -5,7 +5,6 @@ import unittest
 from app import main
 
 
-
 class TextStream:
     def __init__(self):
         self.data = []
@@ -19,6 +18,7 @@ class TextStream:
 
 class TestE2E(unittest.TestCase):
     def check(self, command, source, code, out, *errors):
+        """Returns actual stderr"""
         main.exit_code = 0
         main.command = command
 
@@ -36,9 +36,11 @@ class TestE2E(unittest.TestCase):
         actual_errors = [line for line in f2.getvalue().splitlines() if line.startswith("[line")]
         self.assertSequenceEqual(actual_errors, errors)
 
+        return f2.getvalue()
+
     def test_tokenize(self):
         self.check("tokenize", "1 nil", 0, "NUMBER 1 1.0\nNIL nil null\nEOF  null")
-        
+
         self.check(
             "tokenize",
             "1 $",
@@ -61,13 +63,26 @@ class TestE2E(unittest.TestCase):
     def test_evaluate(self):
         self.check("evaluate", "1 + 1", 0, "2")
 
-        self.check(
+        err = self.check(
             "evaluate",
             "-nil",
             main.RUNTIME_ERROR_CODE,
             "",
-            "[line 1]", # Error message on another line
+            "[line 1]",
         )
+        self.assertIn("Operand must be a number.\n[line 1]", err)
+
+    def test_run(self):
+        self.check("run", "print 1 + 1;", 0, "2")
+
+        err = self.check(
+            "run",
+            "\n-nil;",
+            main.RUNTIME_ERROR_CODE,
+            "",
+            "[line 2]",
+        )
+        self.assertIn("Operand must be a number.\n[line 2]", err)
 
 
 if __name__ == "__main__":

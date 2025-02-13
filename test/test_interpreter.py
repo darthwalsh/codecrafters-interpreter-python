@@ -1,48 +1,34 @@
+import io
 import unittest
 
 from app.interpreter import Interpreter, stringify
-from app.scanner import Scanner
-from app.parser import Parser
+from test.runner import parse
 
 
-errors = []
 
-
-def report(_line, _where, message):
-    errors.append(message)
-
-
-def runtime_error(e):
-    errors.append(str(e))
+def reraise(e):
+    raise AssertionError from e
 
 
 class TestInterpreter(unittest.TestCase):
-    def parse(self, source):
-        # MAYBE have helper for these, with global report
-        errors.clear()
-        tokens = Scanner(source, report).scan_tokens()
-        expr = Parser(tokens, report).parse()
-        self.assertEqual(errors, [])
-        return expr
-
-    def evaluate(self, source):
-        expr = self.parse(source)
-
-        def no_error(e):
-            raise AssertionError from e
-
-        interpreter = Interpreter(no_error)
-        return stringify(interpreter.evaluate(expr))
-
     def validate(self, source, expected):
-        s = self.evaluate(source)
-        self.assertEqual(errors, [])
+        interpreter = Interpreter(reraise)
+        s = stringify(interpreter.evaluate(parse(source)))
         self.assertEqual(s, expected)
 
-    def validate_error(self, source):
-        interpreter = Interpreter(errors.append)
-        interpreter.interpret(self.parse(source), None)
-        self.assertEqual(len(errors), 1)
+    def validate_single_error_expr(self, source):
+        """If expr has runtime error, one error nicely reported"""
+        runtime_err = []
+        interpreter = Interpreter(runtime_err.append)
+        interpreter.interpret(parse(source))
+        self.assertEqual(len(runtime_err), 1)
+
+    def validate_print(self, source, *out):
+        buf = io.StringIO()
+        interpreter = Interpreter(reraise, buf)
+        interpreter.interpret(parse(source))
+
+        self.assertSequenceEqual(buf.getvalue().splitlines(), out)
 
     def test_literal(self):
         self.validate("1", "1")
@@ -59,7 +45,7 @@ class TestInterpreter(unittest.TestCase):
         self.validate("-73", "-73")
         self.validate("--12", "12")
 
-        self.validate_error("-nil")
+        self.validate_single_error_expr("-nil")
 
         self.validate("!true", "false")
         self.validate("!(!true)", "true")
@@ -82,7 +68,7 @@ class TestInterpreter(unittest.TestCase):
         self.validate("1 < 1", "false")
         self.validate("4 >= 5", "false")
 
-        self.validate_error('"A" < "B"')
+        self.validate_single_error_expr('"A" < "B"')
 
     def test_arithmetic(self):
         self.validate("1+2", "3")
@@ -98,10 +84,15 @@ class TestInterpreter(unittest.TestCase):
         self.validate("-(1/0)", "-inf")
         self.validate("0/0", "nan")
 
-        self.validate_error('"A" * 3')
+        self.validate_single_error_expr('"A" * 3')
 
     def test_concat(self):
         self.validate('"A" + "B"', "AB")
 
-        self.validate_error('"A" + 3')
-        self.validate_error('3 + "A"')
+        self.validate_single_error_expr('"A" + 3')
+        self.validate_single_error_expr('3 + "A"')
+
+    def test_statements(self):
+        self.validate_print("1;")
+        self.validate_print("print 1;", "1")
+        self.validate_print("print 1; print 1.2;", "1", "1.2")

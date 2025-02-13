@@ -1,7 +1,9 @@
 import math
-from typing import IO, Callable, override
+import sys
+from typing import Callable, override
 from app.expression import Expr, Binary, Grouping, Literal, Unary, Visitor
 from app.scanner import Token, TokenType as TT
+from app.statement import Expression, Print, Stmt, StmtVisitor
 
 
 def stringify(o):
@@ -30,16 +32,24 @@ class LoxRuntimeError(Exception):
         self.message = message
 
 
-class Interpreter(Visitor[object]):
-    def __init__(self, err: Callable):
+class Interpreter(Visitor[object], StmtVisitor[None]):
+    def __init__(self, err: Callable, file=sys.stdout):
         self.err = err
+        self.file = file
 
-    def interpret(self, expr: Expr, file: IO):
+    def interpret(self, e: Expr | list[Stmt]):
         try:
-            o = self.evaluate(expr)
-            print(stringify(o), file=file)
+            if isinstance(e, list):
+                for st in e:
+                    self.execute(st)
+            else:
+                o = self.evaluate(e)
+                print(stringify(o), file=self.file)
         except LoxRuntimeError as e:
             self.err(e)
+
+    def execute(self, st: Stmt):
+        st.accept(self)
 
     def evaluate(self, expr: Expr):
         return expr.accept(self)
@@ -105,3 +115,11 @@ class Interpreter(Visitor[object]):
                 return not truthy(right)
             case _:
                 raise RuntimeError("Impossible state")
+
+    @override
+    def visit_expression(self, ex: Expression):
+        self.evaluate(ex.expr)
+
+    @override
+    def visit_print(self, pr: Print):
+        print(stringify(self.evaluate(pr.expr)), file=self.file)

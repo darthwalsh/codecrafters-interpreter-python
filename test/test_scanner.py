@@ -1,28 +1,20 @@
 import unittest
 
-from app.scanner import Scanner, TokenType as TT
+from app.scanner import TokenType as TT
+from test.runner import scan_tokens, errors
 
 # See https://github.com/munificent/craftinginterpreters/tree/01e6f5b8f3e5dfa65674c2f9cf4700d73ab41cf8/test/scanning
 
 
-errors = []
-
-
-def report(_line, _where, message):
-    errors.append(message)
-
 
 class TestScanner(unittest.TestCase):
     def validate(self, source, *types, error=None):
-        errors.clear()
-
-        scanner = Scanner(source, report)
-        tokens = scanner.scan_tokens()
+        tokens = scan_tokens(source)
         self.assertSequenceEqual([t.type for t in tokens], types + (TT.EOF,))
         self.assertEqual(errors, [error] if error else [])
 
     def lit(self, source, expected):
-        it = iter(Scanner(source, report).scan_tokens())
+        it = iter(scan_tokens(source))
         self.assertEqual(next(it).literal, expected)
         self.assertEqual(next(it).type, TT.EOF)
 

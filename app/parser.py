@@ -3,6 +3,7 @@ from typing import Callable
 from app.ast import AstPrinter
 from app.expression import Binary, Grouping, Literal, Unary
 from app.scanner import Token, TokenType, TokenType as TT
+from app.statement import Expression, Print
 
 
 class ParseError(Exception):
@@ -15,14 +16,25 @@ class Parser:
         self.current = 0
         self.report = report
 
-    def parse(self):
+    def parse_stmt(self):
+        statements = []
+        while not self.at_end():
+            if st := self.declaration():
+                statements.append(st)
+            # MAYBE: else should list really have None?
+        return statements
+
+    def parse_expr(self):
         try:
             e = self.expression()
         except ParseError:
             return None
-        if self.peek().type != TT.EOF:
+        if not self.at_end():
             self.error(self.peek(), "Expected end of expression")  # don't raise here
         return e
+    
+    def at_end(self):
+        return self.peek().type == TT.EOF
 
     def peek(self):
         return self.tokens[self.current]
@@ -36,11 +48,36 @@ class Parser:
         finally:
             self.current += 1
 
-    def take(self, *types: TokenType):
+    def try_take(self, *types: TokenType):
         for t in types:
             if self.peek().type == t:
                 return self.pop()
+            
+    def take(self, message, *types: TokenType, ):
+        if not (t := self.try_take(*types)):
+            raise self.error(self.peek(), message)
+        return t
+            
 
+    ### Statements Parsing ###
+    def declaration(self):
+        try:
+            # TODO VAR
+            return self.statement()
+        except ParseError:
+            # TODO self.synchronize()
+            return None
+
+    def statement(self):
+        if self.try_take(TT.PRINT):
+            st = Print(self.expression())
+            self.take("Expect ';' after value.", TT.SEMICOLON)
+            return st
+        st = Expression(self.expression())
+        self.take("Expect ';' after expression.", TT.SEMICOLON)
+        return st
+    
+    ### Expression Parsing ####
     def expression(self):
         return self.equality()
 
@@ -57,27 +94,26 @@ class Parser:
         return self.take_binary(self.unary, TT.STAR, TT.SLASH)
 
     def unary(self):
-        if op := self.take(TT.BANG, TT.MINUS):
+        if op := self.try_take(TT.BANG, TT.MINUS):
             return Unary(op, self.unary())
         return self.primary()
 
     def take_binary(self, f, *types):
         e = f()
-        while op := self.take(*types):
+        while op := self.try_take(*types):
             e = Binary(e, op, f())
         return e
 
     def primary(self):
-        if e := self.take(TT.NUMBER, TT.STRING, TT.NIL):
+        if e := self.try_take(TT.NUMBER, TT.STRING, TT.NIL):
             return Literal(e.literal)
 
-        if e := self.take(TT.TRUE, TT.FALSE):
+        if e := self.try_take(TT.TRUE, TT.FALSE):
             return Literal(e.type == TT.TRUE)
 
-        if e := self.take(TT.LEFT_PAREN):
+        if e := self.try_take(TT.LEFT_PAREN):
             expr = self.expression()
-            if not self.take(TT.RIGHT_PAREN):
-                raise self.error(e, "Expect ')' after expression")
+            self.take("Expect ')' after expression", TT.RIGHT_PAREN)
             return Grouping(expr)
 
         raise self.error(self.peek(), "Expect expression")
@@ -95,4 +131,6 @@ if __name__ == "__main__":
         Token(TT.STAR, "*", 1, None),
         Grouping(Literal(45.67)),
     )
-    print(AstPrinter().print(expr))
+    
+    print(AstPrinter().print(Expression(expr)))
+    print(AstPrinter().print(Print(expr)))

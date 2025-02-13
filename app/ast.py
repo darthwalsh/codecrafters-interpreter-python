@@ -3,9 +3,13 @@ from app.expression import Binary, Expr, Grouping, Literal, Unary, Visitor
 
 from typing import Tuple, override
 
+from app.statement import Expression, Print, StmtVisitor
 
-class AstPrinter(Visitor[str]):
-    def print(self, expr: Expr):
+
+class AstPrinter(Visitor[str], StmtVisitor[str]):
+    def print(self, expr: Expr | list[str]):
+        if isinstance(expr, list):
+            return " ".join(self.print(e) for e in expr)
         return expr.accept(self)
 
     @override
@@ -29,6 +33,14 @@ class AstPrinter(Visitor[str]):
     @override
     def visit_unary(self, unary: Unary):
         return self.parens(unary.operator.lexeme, unary.right)
+    
+    @override
+    def visit_expression(self, ex: Expression):
+        return f"{self.print(ex.expr)};"
+    
+    @override
+    def visit_print(self, pr: Print):
+        return f"print {self.print(pr.expr)};"
 
     def parens(self, name, *exprs: Tuple[Expr]):
-        return f"({name} {' '.join(e.accept(self) for e in exprs)})"
+        return f"({name} {' '.join(self.print(e) for e in exprs)})"
