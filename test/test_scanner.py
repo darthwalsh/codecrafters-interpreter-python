@@ -2,6 +2,7 @@ import unittest
 
 from app.scanner import Scanner, Token, TokenType as T
 
+# See https://github.com/munificent/craftinginterpreters/tree/01e6f5b8f3e5dfa65674c2f9cf4700d73ab41cf8/test/scanning
 
 class TestScanner(unittest.TestCase):
     def validate(self, source, *types):
@@ -26,6 +27,10 @@ class TestScanner(unittest.TestCase):
 
     def test_keyword(self):
         self.validate("var true", T.VAR, T.TRUE)
+
+    def test_identifier(self):
+        self.validate("_", T.IDENTIFIER)
+        self.validate("A1_", T.IDENTIFIER)
 
     def test_number(self):
         self.validate("1 12 123 12.3", T.NUMBER, T.NUMBER, T.NUMBER, T.NUMBER)

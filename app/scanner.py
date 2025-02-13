@@ -3,7 +3,6 @@ from enum import IntEnum, auto
 from typing import Callable, overload
 
 
-
 # https://craftinginterpreters.com/scanning.html#token-type
 class TokenType(IntEnum):
     # Single-character tokens.
@@ -191,7 +190,7 @@ class Scanner:
                 return self.scan_token()
             return self.make_token(TokenType.SLASH)
 
-        if self.take(str.isalpha):
+        if self.take(str.isidentifier):
             return self.identifier()
 
         return self.error(f"Unexpected character: {self.pop()}")
@@ -217,7 +216,9 @@ class Scanner:
         return self.make_token(TokenType.NUMBER, float(self.lexeme()))
 
     def identifier(self):
-        self.take_many(str.isalnum)
+        def under_alnum(c):
+            return c.isalnum() or c == "_"
+        self.take_many(under_alnum)
 
         if keyword := keywords.get(self.lexeme()):
             return self.make_token(keyword)
