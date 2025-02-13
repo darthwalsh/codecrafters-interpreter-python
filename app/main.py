@@ -1,20 +1,18 @@
 import sys
-import logging
 
 from app.parser import AstPrinter, Parser
-from app.scanner import Scanner, Error
-
-logging.basicConfig(
-    level=logging.WARNING,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stderr),
-    ],
-)
+from app.scanner import Scanner
 
 
 LEXICAL_ERROR_CODE = 65
 RUNTIME_ERROR_CODE = 70
+
+
+had_error = False
+def report(line, where, message):
+    global had_error
+    had_error = True
+    print(f"[line {line}] Error{where}: {message}", file=sys.stderr)
 
 
 def main():
@@ -26,24 +24,28 @@ def main():
     with open(filename) as file:
         file_contents = file.read()
 
-    scanner = Scanner(file_contents)
+    scanner = Scanner(file_contents, report)
     tokens = scanner.scan_tokens()
+
     if command == "tokenize":
         for token in tokens:
-            if isinstance(token, Error):
-                print(token, file=sys.stderr)
-            else:
-                print(token)
-        exit(scanner.has_error * LEXICAL_ERROR_CODE)
-    else:
-        for token in tokens:
-            print(token, file=sys.stderr)
-        print(file=sys.stderr)
+            print(token)
+        exit(had_error * LEXICAL_ERROR_CODE)
+    if had_error:
+        exit(LEXICAL_ERROR_CODE)
+
+    for token in tokens:
+        print(token, file=sys.stderr)
+    print(file=sys.stderr)
+
+    parser = Parser(tokens, report)
+    expr = parser.parse()
+    if had_error:
+        exit(LEXICAL_ERROR_CODE)
 
     if command == "parse":
-        parser = Parser(tokens)
-        print(AstPrinter().print(parser.parse()))
-        exit(parser.has_error * RUNTIME_ERROR_CODE)
+        print(AstPrinter().print(expr))
+        return
 
     print(f"Unknown command: {command}", file=sys.stderr)
     exit(1)

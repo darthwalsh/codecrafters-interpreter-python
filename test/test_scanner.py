@@ -1,21 +1,30 @@
 import unittest
 
-from app.scanner import Scanner, Token, TokenType as T
+from app.scanner import Scanner, TokenType as TT
 
 # See https://github.com/munificent/craftinginterpreters/tree/01e6f5b8f3e5dfa65674c2f9cf4700d73ab41cf8/test/scanning
 
+
+errors = []
+
+
+def report(_line, _where, message):
+    errors.append(message)
+
+
 class TestScanner(unittest.TestCase):
-    def validate(self, source, *types):
-        scanner = Scanner(source)
+    def validate(self, source, *types, error=None):
+        errors.clear()
+
+        scanner = Scanner(source, report)
         tokens = scanner.scan_tokens()
-        self.assertSequenceEqual(
-            [t.type if isinstance(t, Token) else "ERR" for t in tokens], types + (T.EOF,)
-        )
+        self.assertSequenceEqual([t.type for t in tokens], types + (TT.EOF,))
+        self.assertEqual(errors, [error] if error else [])
 
     def lit(self, source, expected):
-        it = iter(Scanner(source).scan_tokens())
+        it = iter(Scanner(source, report).scan_tokens())
         self.assertEqual(next(it).literal, expected)
-        self.assertEqual(next(it).type, T.EOF)
+        self.assertEqual(next(it).type, TT.EOF)
 
     def test_eof(self):
         self.validate("")
@@ -23,36 +32,36 @@ class TestScanner(unittest.TestCase):
         self.validate("//message\n")
 
     def test_ops(self):
-        self.validate("! = !=", T.BANG, T.EQUAL, T.BANG_EQUAL)
+        self.validate("! = !=", TT.BANG, TT.EQUAL, TT.BANG_EQUAL)
 
     def test_keyword(self):
-        self.validate("var true", T.VAR, T.TRUE)
+        self.validate("var true", TT.VAR, TT.TRUE)
 
     def test_identifier(self):
-        self.validate("_", T.IDENTIFIER)
-        self.validate("A1_", T.IDENTIFIER)
+        self.validate("_", TT.IDENTIFIER)
+        self.validate("A1_", TT.IDENTIFIER)
 
     def test_number(self):
-        self.validate("1 12 123 12.3", T.NUMBER, T.NUMBER, T.NUMBER, T.NUMBER)
+        self.validate("1 12 123 12.3", TT.NUMBER, TT.NUMBER, TT.NUMBER, TT.NUMBER)
         self.lit("1", 1.0)
         self.lit("123", 123.0)
         self.lit("12.3", 12.3)
 
         # Not sure on these semantics, but seems to be what the book does.
-        self.validate("12.", T.NUMBER, T.DOT)
-        self.validate("12. ", T.NUMBER, T.DOT)
-        self.validate("12 .", T.NUMBER, T.DOT)
-        self.validate("12.a", T.NUMBER, T.DOT, T.IDENTIFIER)
-        self.validate("12. a", T.NUMBER, T.DOT, T.IDENTIFIER)
-        self.validate("12 .a", T.NUMBER, T.DOT, T.IDENTIFIER)
-        self.validate(".12", T.DOT, T.NUMBER)
+        self.validate("12.", TT.NUMBER, TT.DOT)
+        self.validate("12. ", TT.NUMBER, TT.DOT)
+        self.validate("12 .", TT.NUMBER, TT.DOT)
+        self.validate("12.a", TT.NUMBER, TT.DOT, TT.IDENTIFIER)
+        self.validate("12. a", TT.NUMBER, TT.DOT, TT.IDENTIFIER)
+        self.validate("12 .a", TT.NUMBER, TT.DOT, TT.IDENTIFIER)
+        self.validate(".12", TT.DOT, TT.NUMBER)
 
     def test_string(self):
-        self.validate('"abc"', T.STRING)
+        self.validate('"abc"', TT.STRING)
         self.lit('"abc"', "abc")
 
-        self.validate('"abc', "ERR")
-        self.validate('"', "ERR")
+        self.validate('"abc', error="Unterminated string.")
+        self.validate('"', error="Unterminated string.")
 
     def test_error(self):
-        self.validate("1 $", T.NUMBER, "ERR")
+        self.validate("1 $", TT.NUMBER, error="Unexpected character: $")

@@ -3,11 +3,23 @@ import unittest
 from app.scanner import Scanner
 from app.parser import AstPrinter, Parser
 
-class TestScanner(unittest.TestCase):
-    def validate(self, source, printed):
-        tokens = Scanner(source).scan_tokens()
-        expr = Parser(tokens).parse()
 
+errors = []
+
+
+def report(_line, _where, message):
+    errors.append(message)
+
+
+class TestScanner(unittest.TestCase):
+    def parse(self, source):
+        errors.clear()
+        tokens = Scanner(source, report).scan_tokens()
+        return Parser(tokens, report).parse() if not errors else None
+
+    def validate(self, source, printed):
+        expr = self.parse(source)
+        self.assertEqual(errors, [])
         self.assertEqual(AstPrinter().print(expr), printed)
 
     def test_primary(self):
@@ -32,9 +44,7 @@ class TestScanner(unittest.TestCase):
         self.validate("!!1", "(! (! 1.0))")
 
     def test_trailing(self):
-        tokens = Scanner("1 1").scan_tokens()
-        parser = Parser(tokens)
-        e = parser.parse()
+        e = self.parse("1 1")
 
-        self.assertTrue(parser.has_error)
+        self.assertEqual(errors, ["Expected end of expression"])
         self.assertEqual(AstPrinter().print(e), "1.0")

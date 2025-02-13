@@ -88,27 +88,19 @@ class Token:
     def __str__(self):
         lit = self.literal if self.literal is not None else "null"
         return f"{self.type.name} {self.lexeme} {lit}"
-    
-@dataclass(frozen=True)
-class Error:
-    message: str
-    line: int
-    # column: int
-
-    def __str__(self):
-        return f"[line {self.line}] Error: {self.message}"
 
 
 class Scanner:
     """Returns tokens and errors"""
 
-    def __init__(self, source: str):
+    def __init__(self, source: str, report: Callable):
+        """Take report() with DI to avoid circular import"""
         self.source = source
         self.start = 0
         self.current = 0
         self.line = 1
         # self.column = 1
-        self.has_error = False
+        self.report = report
 
     def peek(self):
         """Will return empty string if EOF"""
@@ -116,7 +108,7 @@ class Scanner:
             return self.source[self.current]
         except IndexError:
             return ""
-    
+
     def peek_next(self):
         try:
             return self.source[self.current + 1]
@@ -139,7 +131,7 @@ class Scanner:
     def take[T](self, m: Callable[[str], T | None]) -> T | None: ...
     def take(self, m):
         c = self.peek()
-        if not c: # EOF
+        if not c:  # EOF
             return False
         if v := c == m if isinstance(m, str) else m(c):
             self.pop()
@@ -156,15 +148,18 @@ class Scanner:
                 return False
         return True
 
-    def scan_tokens(self):
+    def scan_tokens(self) -> list[Token]:
         tokens = []
         while True:
-            tokens.append(t := self.scan_token())
-            if isinstance(t, Token) and t.type == TokenType.EOF:
+            t = self.scan_token()
+            if not t:
+                continue
+            tokens.append(t)
+            if t.type == TokenType.EOF:
                 return tokens
 
-    def scan_token(self) -> Token | Error:
-        """Unlike the book's scan_token, just return 1 token"""
+    def scan_token(self) -> Token | None:
+        """Unlike the book's scanToken, return 0 or 1 tokens"""
         self.start = self.current
 
         if self.current >= len(self.source):
@@ -194,14 +189,16 @@ class Scanner:
         if self.take(str.isidentifier):
             return self.identifier()
 
-        return self.error(f"Unexpected character: {self.pop()}")
+        self.error(f"Unexpected character: {self.pop()}")
+        return None
 
     def make_token(self, type: TokenType, literal=None):
         return Token(type, self.lexeme(), self.line, literal)
 
     def string(self):
         if not self.skip_until('"'):
-            return self.error("Unterminated string.")
+            self.error("Unterminated string.")
+            return None
         return self.make_token(TokenType.STRING, self.lexeme()[1:-1])
 
     def lexeme(self):
@@ -217,14 +214,14 @@ class Scanner:
         return self.make_token(TokenType.NUMBER, float(self.lexeme()))
 
     def identifier(self):
-        def under_alnum(c):
+        def under_alpha_num(c):
             return c.isalnum() or c == "_"
-        self.take_many(under_alnum)
+
+        self.take_many(under_alpha_num)
 
         if keyword := keywords.get(self.lexeme()):
             return self.make_token(keyword)
         return self.make_token(TokenType.IDENTIFIER)
-    
+
     def error(self, message: str):
-        self.has_error = True
-        return Error(message, self.line)
+        self.report(self.line, "", message)

@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-import sys
-from typing import Iterable, Tuple, override
+from typing import Callable, Tuple, override
 
-from app.scanner import Token, TokenType, TokenType as T
+from app.scanner import Token, TokenType, TokenType as TT
 
 
 class Visitor[T](ABC):
@@ -96,10 +95,10 @@ class ParseError(Exception):
 
 
 class Parser:
-    def __init__(self, tokens: list[Token]):
+    def __init__(self, tokens: list[Token], report: Callable):
         self.tokens = tokens
         self.current = 0
-        self.has_error = False
+        self.report = report
 
     def parse(self):
         try:
@@ -107,7 +106,7 @@ class Parser:
         except ParseError:
             return None
         finally:
-            if self.peek().type != T.EOF:
+            if self.peek().type != TT.EOF:
                 self.error(self.peek(), "Expected end of expression")  # nothing to raise here
 
     def peek(self):
@@ -131,19 +130,19 @@ class Parser:
         return self.equality()
 
     def equality(self):
-        return self.take_binary(self.comparison, T.BANG_EQUAL, T.EQUAL_EQUAL)
+        return self.take_binary(self.comparison, TT.BANG_EQUAL, TT.EQUAL_EQUAL)
 
     def comparison(self):
-        return self.take_binary(self.term, T.GREATER, T.GREATER_EQUAL, T.LESS, T.LESS_EQUAL)
+        return self.take_binary(self.term, TT.GREATER, TT.GREATER_EQUAL, TT.LESS, TT.LESS_EQUAL)
 
     def term(self):
-        return self.take_binary(self.factor, T.MINUS, T.PLUS)
+        return self.take_binary(self.factor, TT.MINUS, TT.PLUS)
 
     def factor(self):
-        return self.take_binary(self.unary, T.STAR, T.SLASH)
+        return self.take_binary(self.unary, TT.STAR, TT.SLASH)
 
     def unary(self):
-        if op := self.take(T.BANG, T.MINUS):
+        if op := self.take(TT.BANG, TT.MINUS):
             return Unary(op, self.unary())
         return self.primary()
 
@@ -154,33 +153,31 @@ class Parser:
         return e
 
     def primary(self):
-        if e := self.take(T.NUMBER, T.STRING, T.NIL):
+        if e := self.take(TT.NUMBER, TT.STRING, TT.NIL):
             return Literal(e.literal)
 
-        if e := self.take(T.TRUE, T.FALSE):
-            return Literal(e.type == T.TRUE)
-        
-        if e := self.take(T.LEFT_PAREN):
+        if e := self.take(TT.TRUE, TT.FALSE):
+            return Literal(e.type == TT.TRUE)
+
+        if e := self.take(TT.LEFT_PAREN):
             expr = self.expression()
-            if not self.take(T.RIGHT_PAREN):
+            if not self.take(TT.RIGHT_PAREN):
                 raise self.error(e, "Expect ')' after expression")
             return Grouping(expr)
 
         raise self.error(self.peek(), "Expect expression")
 
     def error(self, token: Token, message: str):
-        self.has_error = True
-        lexeme = f"'{token.lexeme}'" if token.type != T.EOF else "end"
+        lexeme = f"'{token.lexeme}'" if token.type != TT.EOF else "end"
 
-        # TODO consider moving print to report?
-        print(f"[line {token.line}] at {lexeme}: {message}", file=sys.stderr)
+        self.report(token.line, f" at {lexeme}", message)
         return ParseError()
 
 
 if __name__ == "__main__":
     expr = Binary(
-        Unary(Token(T.MINUS, "-", 1, None), Literal(123)),
-        Token(T.STAR, "*", 1, None),
+        Unary(Token(TT.MINUS, "-", 1, None), Literal(123)),
+        Token(TT.STAR, "*", 1, None),
         Grouping(Literal(45.67)),
     )
     print(AstPrinter().print(expr))
