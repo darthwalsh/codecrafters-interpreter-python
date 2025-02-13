@@ -11,23 +11,30 @@ LEXICAL_ERROR_CODE = 65
 RUNTIME_ERROR_CODE = 70
 
 
-had_error = False
+exit_code = 0
 
 
 def report(line, where, message):
-    global had_error
-    had_error = True
+    global exit_code
+    exit_code = LEXICAL_ERROR_CODE
     print(f"[line {line}] Error{where}: {message}", file=sys.stderr)
 
 
+def runtime_error(e):
+    global exit_code
+    exit_code = RUNTIME_ERROR_CODE
+    print(e.message, file=sys.stderr)
+    print(f"[line {e.token.line}]", file=sys.stderr)
+
+
 @contextmanager
-def step(stage, code):
+def step(stage):
     """Run block using stdout or stderr then exit on errors or command"""
     print(f" {stage.upper()} ".center(20, "="), file=sys.stderr)
     final = stage == command
     yield sys.stdout if final else sys.stderr
-    if had_error:
-        sys.exit(code)
+    if exit_code:
+        sys.exit(exit_code)
     if final:
         sys.exit()
     print(file=sys.stderr)
@@ -40,18 +47,18 @@ def main():
     scanner = Scanner(file_contents, report)
     tokens = scanner.scan_tokens()
 
-    with step("tokenize", LEXICAL_ERROR_CODE) as out:
+    with step("tokenize") as out:
         for token in tokens:
             print(token, file=out)
 
     parser = Parser(tokens, report)
     expr = parser.parse()
-    with step("parse", LEXICAL_ERROR_CODE) as out:
+    with step("parse") as out:
         if expr:
             print(AstPrinter().print(expr), file=out)
 
-    interpreter = Interpreter()
-    with step("evaluate", RUNTIME_ERROR_CODE) as out:
+    interpreter = Interpreter(runtime_error)
+    with step("evaluate") as out:
         interpreter.interpret(expr, out)
 
     sys.exit(f"Unknown command: {command}")

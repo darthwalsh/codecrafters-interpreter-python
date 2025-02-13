@@ -1,24 +1,45 @@
 import math
-from typing import IO, override
+from typing import IO, Callable, override
 from app.expression import Expr, Binary, Grouping, Literal, Unary, Visitor
-from app.scanner import TokenType as TT
+from app.scanner import Token, TokenType as TT
+
+
+def stringify(o):
+    match o:
+        case None:
+            return "nil"
+        case bool():
+            return str(o).lower()
+        case float() if o.is_integer():
+            return str(int(o))
+        case _:
+            return str(o)
+
+
+def truthy(o: object):
+    """Ruby semantics"""
+    return o not in (False, None)
+
+
+class LoxRuntimeError(Exception):
+    """Don't shadow builtin RuntimeError"""
+
+    def __init__(self, token: Token, message: str):
+        super().__init__(message)
+        self.token = token
+        self.message = message
 
 
 class Interpreter(Visitor[object]):
-    def interpret(self, expr: Expr, file: IO):
-        o = self.evaluate(expr)
-        print(self.stringify(o), file=file)
+    def __init__(self, err: Callable):
+        self.err = err
 
-    def stringify(self, o):
-        match o:
-            case None:
-                return "nil"
-            case bool():
-                return str(o).lower()
-            case float() if o.is_integer():
-                return str(int(o))
-            case _:
-                return str(o)
+    def interpret(self, expr: Expr, file: IO):
+        try:
+            o = self.evaluate(expr)
+            print(stringify(o), file=file)
+        except LoxRuntimeError as e:
+            self.err(e)
 
     def evaluate(self, expr: Expr):
         return expr.accept(self)
@@ -32,6 +53,14 @@ class Interpreter(Visitor[object]):
             case TT.EQUAL_EQUAL:
                 return left == right
 
+            case TT.PLUS:
+                if isinstance(left, (str, float)) and type(left) is type(right):
+                    return left + right
+                raise LoxRuntimeError(binary.operator, "Operands must be two numbers or two strings.")
+
+        if not isinstance(left, float) or not isinstance(right, float):
+            raise LoxRuntimeError(binary.operator, "Operands must be numbers.")
+        match binary.operator.type:
             case TT.GREATER:
                 return left > right
             case TT.GREATER_EQUAL:
@@ -43,18 +72,16 @@ class Interpreter(Visitor[object]):
 
             case TT.MINUS:
                 return left - right
-            case TT.PLUS:
-                return left + right
+            case TT.STAR:
+                return left * right
+
             case TT.SLASH:
                 try:
                     return left / right
                 except ZeroDivisionError:
-                    if not left: # 0/0
+                    if not left:  # 0/0
                         return math.nan
                     return left * math.inf
-            case TT.STAR:
-                return left * right
-
             case _:
                 raise RuntimeError("Impossible state")
 
@@ -71,12 +98,10 @@ class Interpreter(Visitor[object]):
         right = self.evaluate(unary.right)
         match unary.operator.type:
             case TT.MINUS:
-                return -right
+                if isinstance(right, float):
+                    return -right
+                raise LoxRuntimeError(unary.operator, "Operand must be a number.")
             case TT.BANG:
-                return not self.truthy(right)
+                return not truthy(right)
             case _:
                 raise RuntimeError("Impossible state")
-
-    def truthy(self, o: object):
-        """Ruby semantics"""
-        return o not in (False, None)
