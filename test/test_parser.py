@@ -48,3 +48,9 @@ class TestScanner(unittest.TestCase):
 
         self.assertEqual(errors, ["Expected end of expression"])
         self.assertEqual(AstPrinter().print(e), "1.0")
+
+    def test_trailing_after_parens(self):
+        e = self.parse("(72 +)")
+
+        self.assertEqual(errors, ["Expect expression"])
+        self.assertIsNone(e)

@@ -102,12 +102,12 @@ class Parser:
 
     def parse(self):
         try:
-            return self.expression()
+            e = self.expression()
         except ParseError:
             return None
-        finally:
-            if self.peek().type != TT.EOF:
-                self.error(self.peek(), "Expected end of expression")  # nothing to raise here
+        if self.peek().type != TT.EOF:
+            self.error(self.peek(), "Expected end of expression")  # don't raise here
+        return e
 
     def peek(self):
         return self.tokens[self.current]
