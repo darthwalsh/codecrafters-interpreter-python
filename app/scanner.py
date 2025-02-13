@@ -104,7 +104,7 @@ class Scanner:
     """Returns tokens and errors"""
 
     def __init__(self, source: str):
-        self.source = source + "\n"  # Adding last newline means we don't have to check for EOF
+        self.source = source
         self.start = 0
         self.current = 0
         self.line = 1
@@ -112,10 +112,20 @@ class Scanner:
         self.has_error = False
 
     def peek(self):
-        return self.source[self.current]
+        """Will return empty string if EOF"""
+        try:
+            return self.source[self.current]
+        except IndexError:
+            return ""
+    
+    def peek_next(self):
+        try:
+            return self.source[self.current + 1]
+        except IndexError:
+            return ""
 
     def pop(self):
-        """The only way to move current forward"""
+        """The only way to move current"""
         c = self.peek()
         if c == "\n":
             self.line += 1
@@ -125,18 +135,27 @@ class Scanner:
         return c
 
     @overload
-    def match(self, m: str) -> bool: ...
+    def take(self, m: str) -> bool: ...
     @overload
-    def match[T](self, m: Callable[[str], T | None]) -> T | None: ...
-    def match(self, m):
+    def take[T](self, m: Callable[[str], T | None]) -> T | None: ...
+    def take(self, m):
         c = self.peek()
+        if not c: # EOF
+            return False
         if v := c == m if isinstance(m, str) else m(c):
             self.pop()
             return v
 
-    def match_until(self, m: str | Callable):
-        while not self.match(m):
-            self.pop()
+    def take_many(self, m: str | Callable):
+        while self.take(m):
+            pass
+
+    def skip_until(self, m: str | Callable):
+        """Skips as many as needed until m is taken"""
+        while not self.take(m):
+            if not self.pop():
+                return False
+        return True
 
     def scan_tokens(self):
         while True:
@@ -151,28 +170,28 @@ class Scanner:
         if self.current >= len(self.source):
             return self.make_token(TokenType.EOF)
 
-        if t := self.match(char_tokens.get):
+        if t := self.take(char_tokens.get):
             return self.make_token(t)
 
-        if t := self.match(char_equal_tokens.get):
-            return self.make_token(TokenType(t + bool(self.match("="))))
+        if t := self.take(char_equal_tokens.get):
+            return self.make_token(TokenType(t + bool(self.take("="))))
 
-        if self.match(str.isspace):
+        if self.take(str.isspace):
             return self.scan_token()
 
-        if self.match(str.isdigit):
+        if self.take(str.isdigit):
             return self.number()
 
-        if self.match('"'):
+        if self.take('"'):
             return self.string()
 
-        if self.match("/"):
-            if self.match("/"):
-                self.match_until("\n")
+        if self.take("/"):
+            if self.take("/"):
+                self.skip_until("\n")
                 return self.scan_token()
             return self.make_token(TokenType.SLASH)
 
-        if self.match(str.isalpha):
+        if self.take(str.isalpha):
             return self.identifier()
 
         return self.error(f"Unexpected character: {self.pop()}")
@@ -181,22 +200,24 @@ class Scanner:
         return Token(type, self.lexeme(), self.line, literal)
 
     def string(self):
-        self.match_until('"')
+        if not self.skip_until('"'):
+            return self.error("Unterminated string.")
         return self.make_token(TokenType.STRING, self.lexeme()[1:-1])
 
     def lexeme(self):
         return self.source[self.start : self.current]
 
     def number(self):
-        self.match_until(str.isdigit)
-        if self.match("."):
-            if not self.match(str.isdigit):
-                return self.error("Invalid number ending in .")
-            self.match_until(str.isdigit)
+        self.take_many(str.isdigit)
+
+        # Don't take the . if it's not followed by digit
+        if self.peek() == "." and (follow := self.peek_next()) and follow.isdigit():
+            self.pop()
+            self.take_many(str.isdigit)
         return self.make_token(TokenType.NUMBER, float(self.lexeme()))
 
     def identifier(self):
-        self.match_until(lambda c: not c.isalnum())
+        self.take_many(str.isalnum)
 
         if keyword := keywords.get(self.lexeme()):
             return self.make_token(keyword)
