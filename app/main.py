@@ -1,8 +1,9 @@
 from contextlib import contextmanager
 import sys
 
+from app.ast import AstPrinter
 from app.interpreter import Interpreter
-from app.parser import AstPrinter, Parser
+from app.parser import Parser
 from app.scanner import Scanner
 
 
@@ -11,6 +12,8 @@ RUNTIME_ERROR_CODE = 70
 
 
 had_error = False
+
+
 def report(line, where, message):
     global had_error
     had_error = True

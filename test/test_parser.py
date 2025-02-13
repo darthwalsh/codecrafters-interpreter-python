@@ -1,7 +1,8 @@
 import unittest
 
+from app.ast import AstPrinter
 from app.scanner import Scanner
-from app.parser import AstPrinter, Parser
+from app.parser import Parser
 
 
 errors = []

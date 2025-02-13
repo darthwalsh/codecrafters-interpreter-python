@@ -1,5 +1,5 @@
 from typing import IO, override
-from app.parser import Binary, Expr, Grouping, Literal, Unary, Visitor
+from app.expression import Expr, Binary, Grouping, Literal, Unary, Visitor
 
 
 class Interpreter(Visitor[object]):
