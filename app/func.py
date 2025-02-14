@@ -5,7 +5,7 @@ from app.statement import Function
 
 
 @dataclass
-class LoxFunction:  # MAYBE some ABC that clock implements?
+class LoxFunction:  # MAYBE some ABC that clock implements? OR remove entirely and replace callsite with native function
     decl: Function
     closure: Environment
 
@@ -18,7 +18,7 @@ class LoxFunction:  # MAYBE some ABC that clock implements?
         return self.decl.name.lexeme
 
     def __call__(self, intr, args: list[object]):
-        # MAYBE figure out circular type hint on intr: Interpreter
+        # MAYBE figure out circular type hint on intr: Interpreter i.e. https://stackoverflow.com/a/69049426/771768
         env = Environment(self.closure)
         for a, p in zip(args, self.decl.params, strict=True):
             env[p.lexeme] = a

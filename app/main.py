@@ -44,7 +44,9 @@ def runtime_error(e):
 
 @contextmanager
 def step(stage):
-    """Run block using stdout or stderr then exit on errors or command"""
+    """Run stage using stdout or stderr then exit on errors or command.
+    Could conditionally use redirect_stdout but that seemed *too* magic.
+    """
     header(stage)
     final = stage == command
     yield sys.stdout if final else sys.stderr
@@ -73,14 +75,14 @@ def main(source):
         expr = parser.parse_expr()
         with step("parse") as out:
             if expr:
-                print(AstPrinter().print(expr), file=out)
+                print(AstPrinter().view(expr), file=out)
 
         with step("evaluate") as out:
             Interpreter(runtime_error, out).interpret(expr)
 
     with step("parse_statement") as out:
         stmt = parser.parse_stmt()
-        print(AstPrinter().print(stmt), file=out)
+        print(AstPrinter().view(stmt), file=out)
 
     with step("run") as out:
         Interpreter(runtime_error, out).interpret(stmt)

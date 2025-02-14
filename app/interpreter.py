@@ -31,18 +31,18 @@ def truthy(o: object):
 
 
 class Interpreter(Visitor[object], StmtVisitor[None]):
-    def __init__(self, err: Callable, file=sys.stdout):
+    def __init__(self, runtime_error: Callable, file=sys.stdout):
         self.global_env = Environment()
         self.environment = self.global_env
 
-        def clock(intr: Interpreter, args: list[object]):
+        def clock(_intr: Interpreter, _args: list[object]):
             return time()
 
         clock.arity = 0  # MAYBE use LoxCallable ABC from LoxFunction?
         self.global_env["clock"] = clock
 
-        self.err = err
-        self.file = file
+        self.runtime_error = runtime_error
+        self.file = file  # Maybe instead of taking in the IO object, it should take a regular callback?
 
     def interpret(self, e: Expr | list[Stmt]):
         try:
@@ -57,7 +57,7 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
                 # TODO in chapter 11 change this from runtime to compile error
                 raise LoxRuntimeError(e.token, f"Tried to return '{stringify(e.value)}' outside function.") from e
         except LoxRuntimeError as e:
-            self.err(e)
+            self.runtime_error(e)
 
     def execute(self, st: Stmt):
         st.accept(self)

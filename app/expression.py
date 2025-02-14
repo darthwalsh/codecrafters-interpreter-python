@@ -16,8 +16,8 @@ class Assign(Expr):
     name: Token
     value: Expr
     # Don't need @override accept() because it's dynamically dispatched in parent class
-    # i.e. def accept(self, visitor: Visitor):
-    #     return visitor.binary(self)
+    # i.e. def accept(self, visitor: Visitor[T]):
+    #     return visitor.visit_assign(self)
 
 
 @dataclass(frozen=True)

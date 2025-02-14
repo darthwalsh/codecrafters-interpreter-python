@@ -7,7 +7,7 @@ from test.runner import parse, errors, parse_expr, parse_stmt, reraise
 class TestParser(unittest.TestCase):
     def validate(self, source, printed):
         expr = parse(source, reraise)
-        self.assertEqual(AstPrinter().print(expr), printed)
+        self.assertEqual(AstPrinter().view(expr), printed)
 
     def error(self, source, error: str, parsed: str | None):
         e = parse_stmt(source) if ";" in source or "{" in source else parse_expr(source)
@@ -16,7 +16,7 @@ class TestParser(unittest.TestCase):
         if parsed is None:
             self.assertIsNone(e)
         else:
-            self.assertEqual(AstPrinter().print(e), parsed)
+            self.assertEqual(AstPrinter().view(e), parsed)
 
     def test_primary(self):
         self.validate("1", "1.0")
