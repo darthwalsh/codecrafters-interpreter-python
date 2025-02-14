@@ -66,6 +66,20 @@ class TestParser(unittest.TestCase):
 
         self.validate("if (x) if (a) b; else z;", "if (x) [if (a) [b;] else [z;]]")
 
+    def test_for_caramelization(self):
+        self.validate(
+            "for (var i = 0; i < 3; i = i + 1) i;",
+            "{ var i = 0.0; while ((< i 3.0)) [{ i; (= i (+ i 1.0)); }] }",
+        )
+        self.validate(
+            "for (; ; ) { print i; }",
+            "while (true) [{ print i; }]",
+        )
+        self.validate(
+            "for (x=6; 2; ) if (x) print i;",
+            "{ (= x 6.0); while (2.0) [if (x) [print i;]] }",
+        )
+
     def test_while(self):
         self.validate("while (1) 1;", "while (1.0) [1.0;]")
         self.validate("while (1) { 1; }", "while (1.0) [{ 1.0; }]")

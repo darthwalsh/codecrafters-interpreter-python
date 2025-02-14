@@ -67,11 +67,15 @@ declaration    → varDecl
                | statement ;
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 statement      → exprStmt
+               | forStmt
                | ifStmt
                | printStmt
                | whileStmt
                | block ;
 exprStmt       → expression ";" ;
+forStmt        → "for" "(" ( varDecl | exprStmt | ";" )
+                 expression? ";"
+                 expression? ")" statement ;
 ifStmt         → "if" "(" expression ")" statement
                ( "else" statement )? ;
 printStmt      → "print" expression ";" ;
@@ -97,6 +101,9 @@ block          → "{" declaration* "}" ;
         return Var(name, initializer)
 
     def statement(self):
+        if self.try_take(TT.FOR):
+            return self.for_statement()
+
         if self.try_take(TT.PRINT):
             st = Print(self.expression())
             self.take("Expect ';' after value.", TT.SEMICOLON)
@@ -121,9 +128,51 @@ block          → "{" declaration* "}" ;
 
         if self.try_take(TT.LEFT_BRACE):
             return Block(self.block())
+        return self.expression_statement()
+
+    def expression_statement(self):
         st = Expression(self.expression())
         self.take("Expect ';' after expression.", TT.SEMICOLON)
         return st
+    
+    def for_statement(self):
+        self.take("Expect '(' after 'for'.", TT.LEFT_PAREN)
+
+        initializer = None
+        if self.try_take(TT.SEMICOLON):
+            pass
+        elif self.try_take(TT.VAR):
+            initializer = self.var_declaration()
+        else:
+            initializer = self.expression_statement()
+
+        if self.try_take(TT.SEMICOLON):
+            condition = None
+        else:
+            condition = self.expression()
+            self.take("Expect ';' after loop condition.", TT.SEMICOLON)
+        
+        if self.try_take(TT.RIGHT_PAREN):
+            increment = None
+        else:
+            increment = self.expression()
+            self.take("Expect ')' after for clauses.", TT.RIGHT_PAREN)
+
+        body = self.statement()
+
+        if increment:
+            body = Block([body, Expression(increment)])
+        
+        if condition is None:
+            condition = Literal(True)
+
+        body = While(condition, body)
+
+        if initializer:
+            body = Block([initializer, body])
+
+        return body
+        
 
     def block(self):
         statements = []

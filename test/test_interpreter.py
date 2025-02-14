@@ -137,6 +137,8 @@ class TestInterpreter(unittest.TestCase):
         self.validate_print("var x = 0; while (x < 3) { print x = x + 1; }", "1", "2", "3")
         self.validate_print("while (false) { print 2; }")
 
+        self.validate_print("for (var x = 0; x < 3;) print x = x + 1;", "1", "2", "3")
+
     def test_statements(self):
         self.validate_print("1;")
         self.validate_print("print 1;", "1")
