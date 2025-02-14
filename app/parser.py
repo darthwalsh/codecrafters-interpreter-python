@@ -2,7 +2,7 @@ from typing import Callable
 
 from app.expression import Assign, Binary, Grouping, Literal, Unary, Variable
 from app.scanner import Token, TokenType as TT
-from app.statement import Expression, Print, Var
+from app.statement import Block, Expression, Print, Var
 
 
 class ParseError(Exception):
@@ -67,9 +67,11 @@ declaration    → varDecl
                | statement ;
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 statement      → exprStmt
-               | printStmt ;
+               | printStmt
+               | block ;
 exprStmt       → expression ";" ;
 printStmt      → "print" expression ";" ;
+block          → "{" declaration* "}" ;
     """
 
     def declaration(self):
@@ -94,9 +96,22 @@ printStmt      → "print" expression ";" ;
             st = Print(self.expression())
             self.take("Expect ';' after value.", TT.SEMICOLON)
             return st
+        if self.try_take(TT.LEFT_BRACE):
+            return Block(self.block())
         st = Expression(self.expression())
         self.take("Expect ';' after expression.", TT.SEMICOLON)
         return st
+    
+    def block(self):
+        statements = []
+        while not self.try_take(TT.RIGHT_BRACE):
+            if self.at_end():
+                self.error(self.peek(), "Expect '}' after block.")
+                break
+
+            if st := self.declaration():
+                statements.append(st)
+        return statements
 
     """
         Expression Grammar

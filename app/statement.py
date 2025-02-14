@@ -13,6 +13,11 @@ class Stmt(ABC):
 
 
 @dataclass(frozen=True)
+class Block(Stmt):
+    statements: list[Stmt]
+
+
+@dataclass(frozen=True)
 class Expression(Stmt):
     expr: Expr
 
@@ -27,7 +32,12 @@ class Var(Stmt):
     name: Token
     initializer: Expr | None
 
+
 class StmtVisitor[T](ABC):
+    @abstractmethod
+    def visit_block(self, block: Block) -> T:
+        pass
+
     @abstractmethod
     def visit_expression(self, ex: Expression) -> T:
         pass

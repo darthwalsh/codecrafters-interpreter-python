@@ -17,28 +17,32 @@ def scan_tokens(source):
     return scanner.scan_tokens()
 
 
-def parse_expr(source):
+def parse_expr(source, reporter=_report):
     errors.clear()
-    tokens = Scanner(source, _report).scan_tokens()
+    tokens = Scanner(source, reporter).scan_tokens()
     if errors:
         return None
-    return Parser(tokens, _report).parse_expr() if not errors else None
+    return Parser(tokens, reporter).parse_expr() if not errors else None
 
 
-def parse_stmt(source):
+def parse_stmt(source, reporter=_report):
     errors.clear()
-    tokens = Scanner(source, _report).scan_tokens()
+    tokens = Scanner(source, reporter).scan_tokens()
     if errors:
         return None
-    return Parser(tokens, _report).parse_stmt()
+    return Parser(tokens, reporter).parse_stmt()
 
 
-def parse(source) -> Expr | list[Stmt]:
+def parse(source, reporter=_report) -> Expr | list[Stmt]:
     """Hacky workaround to parse either. Asserts no errors"""
     try:
-        if ";" in source:  # Might regret this later, so don't move this to app
-            return parse_stmt(source)
-        return parse_expr(source)
+        if ";" in source or "{" in source:  # Might regret this later, so don't move this to app
+            return parse_stmt(source, reporter)
+        return parse_expr(source, reporter)
     finally:
         if errors:
             raise AssertionError("Parse/Lex error:", errors)
+
+
+def reraise(e):
+    raise AssertionError from e

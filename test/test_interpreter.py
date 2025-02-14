@@ -3,12 +3,7 @@ import unittest
 
 from app.interpreter import Interpreter, stringify
 from app.runtime import LoxRuntimeError
-from test.runner import parse
-
-
-
-def reraise(e):
-    raise AssertionError from e
+from test.runner import parse, reraise
 
 
 class TestInterpreter(unittest.TestCase):
@@ -33,8 +28,10 @@ class TestInterpreter(unittest.TestCase):
 
     def statement_errors(self, source, *out):
         buf = io.StringIO()
+
         def err(e: LoxRuntimeError):
             buf.write(e.message)
+
         interpreter = Interpreter(err, buf)
         interpreter.interpret(parse(source))
 
@@ -104,7 +101,7 @@ class TestInterpreter(unittest.TestCase):
 
     def test_assign(self):
         self.validate_print("var x; print x = 3; print x;", "3", "3")
-        
+
         self.statement_errors("y = 2;", "Undefined variable 'y'.")
 
     def test_var(self):
@@ -113,6 +110,10 @@ class TestInterpreter(unittest.TestCase):
         self.validate_print("var x = 1; var x = 2; print x;", "2")
 
         self.statement_errors("print x; print 1;", "Undefined variable 'x'.")
+
+    def test_block(self):
+        self.validate_print("var x = 1; {x = 2; print x; } print x; ", "2", "2")
+        self.validate_print("var x = 1; {var x = 2; print x; } print x; ", "2", "1")
 
     def test_statements(self):
         self.validate_print("1;")

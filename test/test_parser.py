@@ -1,17 +1,16 @@
 import unittest
 
 from app.ast import AstPrinter
-from test.runner import parse, errors, parse_expr, parse_stmt
+from test.runner import parse, errors, parse_expr, parse_stmt, reraise
 
 
 class TestParser(unittest.TestCase):
     def validate(self, source, printed):
-        expr = parse(source)
-        self.assertEqual(errors, [])
+        expr = parse(source, reraise)
         self.assertEqual(AstPrinter().print(expr), printed)
 
     def error(self, source, error: str, parsed: str | None):
-        e = parse_stmt(source) if ";" in source else parse_expr(source)
+        e = parse_stmt(source) if ";" in source or "{" in source else parse_expr(source)
         self.assertEqual(errors, [error])
 
         if parsed is None:
@@ -58,6 +57,13 @@ class TestParser(unittest.TestCase):
         
         self.error("print 1; 3", "Expect ';' after expression.", "print 1.0;")
         self.error("print; 3;", "Expect expression", "3.0;")
+
+    def test_block(self):
+        self.validate("{1;}", "{ 1.0; }")
+        self.validate("{}", "{  }")
+        self.validate("{1;}{}", "{ 1.0; } {  }")
+
+        self.error("{", "Expect '}' after block.", "{  }")
 
     def test_trailing(self):
         self.error("1 1", "Expected end of expression", "1.0")
