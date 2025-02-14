@@ -3,11 +3,12 @@ import sys
 from time import time
 from typing import Callable, override
 
+from app.func import LoxFunction
 from app.runtime import LoxRuntimeError
 from app.environment import Environment
 from app.expression import Assign, Call, Expr, Binary, Grouping, Literal, Logical, Unary, Variable, Visitor
 from app.scanner import TokenType as TT
-from app.statement import Block, Expression, If, Print, Stmt, StmtVisitor, Var, While
+from app.statement import Block, Expression, Function, If, Print, Stmt, StmtVisitor, Var, While
 
 
 def stringify(o):
@@ -19,7 +20,7 @@ def stringify(o):
         case float() if o.is_integer():
             return str(int(o))
         case func if callable(o):
-            return func.__name__
+            return f"<fn {func.__name__}>"
         case _:
             return str(o)
 
@@ -36,7 +37,7 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
         def clock(intr: Interpreter, args: list[object]):
             return time()
-        clock.arity = 0  # TODO check this works as LoxCallable
+        clock.arity = 0  # MAYBE use LoxCallable ABC from LoxFunction?
         self.global_env["clock"] = clock
 
         self.err = err
@@ -158,16 +159,23 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     @override
     def visit_block(self, block: Block):
-        self.environment = Environment(self.environment)
+        self.execute_block(block.statements, Environment(self.environment))
+
+    def execute_block(self, statements: list[Stmt], env: Environment):
+        orig, self.environment = self.environment, env
         try:
-            for st in block.statements:
+            for st in statements:
                 self.execute(st)
         finally:
-            self.environment = self.environment.parent
+            self.environment = orig
 
     @override
     def visit_expression(self, ex: Expression):
         self.evaluate(ex.expr)
+
+    @override
+    def visit_function(self, f: Function):
+        self.environment[f.name.lexeme] = LoxFunction(f)
 
     @override
     def visit_if(self, i: If):

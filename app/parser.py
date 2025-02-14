@@ -2,7 +2,7 @@ from typing import Callable
 
 from app.expression import Assign, Binary, Call, Grouping, Literal, Logical, Unary, Variable
 from app.scanner import Token, TokenType as TT
-from app.statement import Block, Expression, If, Print, Var, While
+from app.statement import Block, Expression, Function, If, Print, Var, While
 
 
 class ParseError(Exception):
@@ -63,8 +63,14 @@ class Parser:
         Statement Grammar
 
 program        → declaration* EOF ;
-declaration    → varDecl
+declaration    → funDecl
+               | varDecl
                | statement ;
+
+funDecl        → "fun" function ;
+function       → IDENTIFIER "(" parameters? ")" block ;
+parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
+
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 statement      → exprStmt
                | forStmt
@@ -85,12 +91,28 @@ block          → "{" declaration* "}" ;
 
     def declaration(self):
         try:
+            if self.try_take(TT.FUN):
+                return self.fun("function")
             if self.try_take(TT.VAR):
                 return self.var_declaration()
             return self.statement()
         except ParseError:
             self.synchronize()
             return None
+        
+    def fun(self, kind):
+        name = self.take(f"Expect {kind} name.", TT.IDENTIFIER)
+        self.take(f"Expect '(' after {kind} name.", TT.LEFT_PAREN)
+        
+        params = []
+        if not self.try_take(TT.RIGHT_PAREN):
+            params.append(self.take("Expect parameter name.", TT.IDENTIFIER))
+            while self.try_take(TT.COMMA):
+                params.append(self.take("Expect parameter name.", TT.IDENTIFIER))
+            self.take("Expect ')' after parameters.", TT.RIGHT_PAREN)
+
+        self.take(f"Expect '{{' before {kind} body.", TT.LEFT_BRACE)
+        return Function(name, params, self.block())
 
     def var_declaration(self):
         name = self.take("Expect variable name.", TT.IDENTIFIER)

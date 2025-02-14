@@ -23,6 +23,13 @@ class Expression(Stmt):
 
 
 @dataclass(frozen=True)
+class Function(Stmt):
+    name: Token
+    params: list[Token]
+    body: list[Stmt]
+
+
+@dataclass(frozen=True)
 class If(Stmt):
     condition: Expr
     then_branch: Stmt
@@ -53,6 +60,10 @@ class StmtVisitor[T](ABC):
 
     @abstractmethod
     def visit_expression(self, ex: Expression) -> T:
+        pass
+
+    @abstractmethod
+    def visit_function(self, f: Function) -> T:
         pass
 
     @abstractmethod

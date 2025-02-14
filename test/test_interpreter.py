@@ -105,10 +105,9 @@ class TestInterpreter(unittest.TestCase):
         self.validate_single_error_expr('3 + "A"')
 
     def test_clock(self):
-        self.validate_print("print clock;", "clock")
-        # TODO test name of source func
+        self.validate_print("print clock;", "<fn clock>")
 
-        s, = self.run_stmt("print clock();")
+        (s,) = self.run_stmt("print clock();")
         self.assertAlmostEqual(float(s), time(), places=0)  # within one sec
 
     def test_logical(self):
@@ -126,6 +125,12 @@ class TestInterpreter(unittest.TestCase):
         self.validate_print("var x; print x = 3; print x;", "3", "3")
 
         self.statement_errors("y = 2;", "Undefined variable 'y'.")
+
+    def test_function(self):
+        self.validate_print("fun a() { print 1.0; } a(); ", "1")
+        self.validate_print("fun a(x) { print x; } a(1); a(2); ", "1", "2")
+
+        self.validate_print("fun a(x) {} print a; ", "<fn a>")
 
     def test_var(self):
         self.validate_print("var x = 1 + 2; print x;", "3")
