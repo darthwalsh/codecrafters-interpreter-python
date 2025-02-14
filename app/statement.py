@@ -1,6 +1,5 @@
-from dataclasses import dataclass
-
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from app.expression import Expr
 from app.scanner import Token

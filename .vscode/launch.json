@@ -12,10 +12,10 @@
             "args": ["run", "/tmp/test.lox"]
         },
         {
-            "name": "parser",
+            "name": "ast",
             "type": "debugpy",
             "request": "launch",
-            "module": "app.parser"
+            "module": "app.ast"
         }
     ]
 }

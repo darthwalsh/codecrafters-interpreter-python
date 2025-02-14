@@ -12,5 +12,11 @@ class Environment:
         except KeyError:
             raise LoxRuntimeError(name, f"Undefined variable '{name.lexeme}'.")
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: object):
         self.values[key] = value
+
+    def assign(self, name: Token, value: object):
+        if (key := name.lexeme) in self.values:
+            self[key] = value
+        else:
+            raise LoxRuntimeError(name, f"Undefined variable '{name.lexeme}'.")

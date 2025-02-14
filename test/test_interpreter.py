@@ -102,6 +102,11 @@ class TestInterpreter(unittest.TestCase):
         self.validate_single_error_expr('"A" + 3')
         self.validate_single_error_expr('3 + "A"')
 
+    def test_assign(self):
+        self.validate_print("var x; print x = 3; print x;", "3", "3")
+        
+        self.statement_errors("y = 2;", "Undefined variable 'y'.")
+
     def test_var(self):
         self.validate_print("var x = 1 + 2; print x;", "3")
         self.validate_print("var x; print x;", "nil")

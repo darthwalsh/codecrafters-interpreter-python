@@ -1,6 +1,5 @@
-from dataclasses import dataclass
-
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from app.scanner import Token
 
@@ -13,13 +12,19 @@ class Expr(ABC):
 
 
 @dataclass(frozen=True)
+class Assign(Expr):
+    name: Token
+    value: Expr
+    # Don't need @override accept() because it's dynamically dispatched in parent class
+    # i.e. def accept(self, visitor: Visitor):
+    #     return visitor.binary(self)
+
+
+@dataclass(frozen=True)
 class Binary(Expr):
     left: Expr
     operator: Token
     right: Expr
-    # Don't need @override accept() because it's dynamically dispatched in parent class
-    # i.e. def accept(self, visitor: Visitor):
-    #     return visitor.binary(self)
 
 
 @dataclass(frozen=True)
@@ -43,8 +48,11 @@ class Variable(Expr):
     name: Token
 
 
-
 class Visitor[T](ABC):
+    @abstractmethod
+    def visit_assign(self, assign: Assign) -> T:
+        pass
+
     @abstractmethod
     def visit_binary(self, binary: Binary) -> T:
         pass

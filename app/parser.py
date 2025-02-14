@@ -1,8 +1,7 @@
 from typing import Callable
 
-from app.ast import AstPrinter
-from app.expression import Binary, Grouping, Literal, Unary, Variable
-from app.scanner import Token, TokenType, TokenType as TT
+from app.expression import Assign, Binary, Grouping, Literal, Unary, Variable
+from app.scanner import Token, TokenType as TT
 from app.statement import Expression, Print, Var
 
 
@@ -48,12 +47,12 @@ class Parser:
         finally:
             self.current += 1
 
-    def try_take(self, *types: TokenType):
+    def try_take(self, *types: TT):
         for t in types:
             if self.peek().type == t:
                 return self.pop()
 
-    def take(self, message, *types: TokenType):
+    def take(self, message, *types: TT):
         if not (t := self.try_take(*types)):
             raise self.error(self.peek(), message)
         return t
@@ -102,7 +101,9 @@ printStmt      → "print" expression ";" ;
     """
         Expression Grammar
 
-expression     → equality ;
+expression     → assignment ;
+assignment     → IDENTIFIER "=" assignment
+               | equality ;
 equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term           → factor ( ( "-" | "+" ) factor )* ;
@@ -115,7 +116,21 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
     """
 
     def expression(self):
-        return self.equality()
+        return self.assignment()
+    
+    def assignment(self):
+        name = self.equality()
+
+        if eq := self.try_take(TT.EQUAL):
+            value = self.assignment()
+
+            if isinstance(name, Variable):
+                return Assign(name.name, value)
+            
+            self.error(eq, "Invalid assignment target.")  # don't raise, can return
+        
+        return name
+
 
     def equality(self):
         return self.take_binary(self.comparison, TT.BANG_EQUAL, TT.EQUAL_EQUAL)
@@ -172,14 +187,3 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
 
         self.report(token.line, f" at {lexeme}", message)
         return ParseError()
-
-
-if __name__ == "__main__":
-    expr = Binary(
-        Unary(Token(TT.MINUS, "-", 1, None), Literal(123)),
-        Token(TT.STAR, "*", 1, None),
-        Grouping(Literal(45.67)),
-    )
-
-    print(AstPrinter().print(Expression(expr)))
-    print(AstPrinter().print(Print(expr)))

@@ -1,8 +1,7 @@
-from app.expression import Binary, Expr, Grouping, Literal, Unary, Variable, Visitor
-
-
 from typing import Tuple, override
 
+from app.expression import Assign, Binary, Expr, Grouping, Literal, Unary, Variable, Visitor
+from app.scanner import Token, TokenType as TT
 from app.statement import Expression, Print, StmtVisitor, Var
 
 
@@ -11,6 +10,10 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
         if isinstance(expr, list):
             return " ".join(self.print(e) for e in expr)
         return expr.accept(self)
+
+    @override
+    def visit_assign(self, assign: Assign):
+        return self.parens(f"= {assign.name.lexeme}", assign.value)
 
     @override
     def visit_binary(self, binary: Binary):
@@ -33,15 +36,15 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
     @override
     def visit_unary(self, unary: Unary):
         return self.parens(unary.operator.lexeme, unary.right)
-    
+
     @override
     def visit_variable(self, variable: Variable):
         return variable.name.lexeme
-    
+
     @override
     def visit_expression(self, ex: Expression):
         return f"{self.print(ex.expr)};"
-    
+
     @override
     def visit_print(self, pr: Print):
         return f"print {self.print(pr.expr)};"
@@ -53,3 +56,19 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
     def visit_var(self, var: Var):
         init = f" = {self.print(var.initializer)}" if var.initializer else ""
         return f"var {var.name.lexeme}{init};"
+
+
+if __name__ == "__main__":
+    expr = Binary(
+        Unary(Token(TT.MINUS, "-", 1, None), Literal(123)),
+        Token(TT.STAR, "*", 1, None),
+        Grouping(Literal(45.67)),
+    )
+
+    print(AstPrinter().print(Print(expr)))
+
+    def type_test() -> Visitor[str]:
+        return AstPrinter()
+
+    visitor = type_test()
+    print(v := visitor.visit_binary(expr))

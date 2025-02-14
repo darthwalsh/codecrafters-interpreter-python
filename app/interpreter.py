@@ -1,9 +1,10 @@
 import math
 import sys
 from typing import Callable, override
+
 from app.runtime import LoxRuntimeError
 from app.environment import Environment
-from app.expression import Expr, Binary, Grouping, Literal, Unary, Variable, Visitor
+from app.expression import Assign, Expr, Binary, Grouping, Literal, Unary, Variable, Visitor
 from app.scanner import TokenType as TT
 from app.statement import Expression, Print, Stmt, StmtVisitor, Var
 
@@ -30,7 +31,6 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
         self.environment = Environment()
         self.err = err
         self.file = file
-        
 
     def interpret(self, e: Expr | list[Stmt]):
         try:
@@ -48,6 +48,11 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     def evaluate(self, expr: Expr):
         return expr.accept(self)
+
+    @override
+    def visit_assign(self, assign: Assign):
+        self.environment.assign(assign.name, o := self.evaluate(assign.value))
+        return o
 
     @override
     def visit_binary(self, binary: Binary):

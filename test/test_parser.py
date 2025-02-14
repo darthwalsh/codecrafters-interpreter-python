@@ -34,6 +34,18 @@ class TestParser(unittest.TestCase):
     def test_expression(self):
         self.validate("1;", "1.0;")
 
+    def test_assign(self):
+        self.validate("x = y", "(= x y)")
+        self.validate("x = y = z", "(= x (= y z))")
+
+        e = parse_expr("x =")
+        self.assertEqual(errors, ["Expect expression"])
+        self.assertIsNone(e)
+
+        e = parse_expr("1 = x")
+        self.assertEqual(errors, ["Invalid assignment target."])
+        self.assertEqual(AstPrinter().print(e), "1.0")
+
     def test_var(self):
         self.validate("var x = 1 + x;", "var x = (+ 1.0 x);")
 
@@ -50,12 +62,10 @@ class TestParser(unittest.TestCase):
 
     def test_trailing(self):
         e = parse_expr("1 1")
-
         self.assertEqual(errors, ["Expected end of expression"])
         self.assertEqual(AstPrinter().print(e), "1.0")
 
     def test_trailing_after_parens(self):
         e = parse_expr("(72 +)")
-
         self.assertEqual(errors, ["Expect expression"])
         self.assertIsNone(e)
