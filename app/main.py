@@ -78,10 +78,9 @@ def main(source):
         with step("evaluate") as out:
             Interpreter(runtime_error, out).interpret(expr)
 
-    header("parse statement")
-    stmt = parser.parse_stmt()
-    print(AstPrinter().print(stmt), file=sys.stderr)
-    print(file=sys.stderr)
+    with step("parse_statement") as out:
+        stmt = parser.parse_stmt()
+        print(AstPrinter().print(stmt), file=out)
 
     with step("run") as out:
         Interpreter(runtime_error, out).interpret(stmt)
