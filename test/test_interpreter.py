@@ -31,7 +31,7 @@ class TestInterpreter(unittest.TestCase):
 
         return buf.getvalue().splitlines()
 
-    def statement_errors(self, source, *out):
+    def runtime_error(self, source, *out):
         buf = io.StringIO()
 
         def err(e: LoxRuntimeError):
@@ -124,7 +124,7 @@ class TestInterpreter(unittest.TestCase):
     def test_assign(self):
         self.validate_print("var x; print x = 3; print x;", "3", "3")
 
-        self.statement_errors("y = 2;", "Undefined variable 'y'.")
+        self.runtime_error("y = 2;", "Undefined variable 'y'.")
 
     def test_function(self):
         self.validate_print("fun a() { print 1.0; } a(); ", "1")
@@ -137,7 +137,7 @@ class TestInterpreter(unittest.TestCase):
         self.validate_print("var x; print x;", "nil")
         self.validate_print("var x = 1; var x = 2; print x;", "2")
 
-        self.statement_errors("print x; print 1;", "Undefined variable 'x'.")
+        self.runtime_error("print x; print 1;", "Undefined variable 'x'.")
 
     def test_block(self):
         self.validate_print("var x = 1; {x = 2; print x; } print x; ", "2", "2")
@@ -148,6 +148,19 @@ class TestInterpreter(unittest.TestCase):
         self.validate_print("if (false) print 1;")
         self.validate_print("if (true)  print 1; else print 2;", "1")
         self.validate_print("if (false) print 1; else print 2;", "2")
+
+    def test_return(self):
+        self.validate_print("fun b(a) { return a; } print b(1);", "1")
+        self.validate_print("fun b() { return; } print b();", "nil")
+        self.validate_print("fun b() { } print b();", "nil")
+
+        self.validate_print("fun a() {} fun b() { return a; } print b();", "<fn a>")
+        self.validate_print("fun a() { return a; } fun b() { return a; } print b()();", "<fn a>")
+        self.validate_print("fun a() { return a; } fun b() { return a; } print b()()();", "<fn a>")
+
+        self.validate_print("fun b() {{{ return 1; }}} print b();", "1")
+
+        self.runtime_error("return 1;", "Tried to return '1' outside function.")
 
     def test_while(self):
         self.validate_print("var x = 0; while (x < 3) { x = x + 1; print x; }", "1", "2", "3")

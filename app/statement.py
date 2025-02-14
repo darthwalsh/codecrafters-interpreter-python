@@ -42,6 +42,12 @@ class Print(Stmt):
 
 
 @dataclass(frozen=True)
+class Return(Stmt):
+    keyword: Token
+    value: Expr | None
+
+
+@dataclass(frozen=True)
 class Var(Stmt):
     name: Token
     initializer: Expr | None
@@ -68,6 +74,10 @@ class StmtVisitor[T](ABC):
 
     @abstractmethod
     def visit_if(self, i: If) -> T:
+        pass
+
+    @abstractmethod
+    def visit_return(self, ret: Return) -> T:
         pass
 
     @abstractmethod

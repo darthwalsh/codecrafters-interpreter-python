@@ -2,7 +2,7 @@ from typing import Callable
 
 from app.expression import Assign, Binary, Call, Grouping, Literal, Logical, Unary, Variable
 from app.scanner import Token, TokenType as TT
-from app.statement import Block, Expression, Function, If, Print, Var, While
+from app.statement import Block, Expression, Function, If, Print, Return, Var, While
 
 
 class ParseError(Exception):
@@ -76,6 +76,7 @@ statement      → exprStmt
                | forStmt
                | ifStmt
                | printStmt
+               | returnStmt
                | whileStmt
                | block ;
 exprStmt       → expression ";" ;
@@ -85,6 +86,7 @@ forStmt        → "for" "(" ( varDecl | exprStmt | ";" )
 ifStmt         → "if" "(" expression ")" statement
                ( "else" statement )? ;
 printStmt      → "print" expression ";" ;
+returnStmt     → "return" expression? ";" ;
 whileStmt      → "while" "(" expression ")" statement ;
 block          → "{" declaration* "}" ;
     """
@@ -140,6 +142,14 @@ block          → "{" declaration* "}" ;
             if self.try_take(TT.ELSE):
                 else_branch = self.statement()
             return If(condition, then_branch, else_branch)
+
+        if ret := self.try_take(TT.RETURN):
+            if self.try_take(TT.SEMICOLON):
+                return Return(ret, None)
+            
+            st = Return(ret, self.expression())
+            self.take("Expect ';' after return value.", TT.SEMICOLON)
+            return st  # MAYBE refactor this to a small context manager
         
         if self.try_take(TT.WHILE):
             self.take("Expect '(' after 'while'.", TT.LEFT_PAREN)

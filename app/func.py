@@ -1,4 +1,5 @@
 from app.environment import Environment
+from app.runtime import ReturnUnwind
 from app.statement import Function
 
 
@@ -14,4 +15,8 @@ class LoxFunction:  # MAYBE want this as an ABC that clock implements?
         for a, p in zip(args, self.decl.params, strict=True):
             env[p.lexeme] = a
 
-        intr.execute_block(self.decl.body, env)
+        try:
+            intr.execute_block(self.decl.body, env)
+        except ReturnUnwind as e:
+            return e.value
+

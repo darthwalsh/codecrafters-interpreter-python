@@ -4,11 +4,11 @@ from time import time
 from typing import Callable, override
 
 from app.func import LoxFunction
-from app.runtime import LoxRuntimeError
+from app.runtime import LoxRuntimeError, ReturnUnwind
 from app.environment import Environment
 from app.expression import Assign, Call, Expr, Binary, Grouping, Literal, Logical, Unary, Variable, Visitor
 from app.scanner import TokenType as TT
-from app.statement import Block, Expression, Function, If, Print, Stmt, StmtVisitor, Var, While
+from app.statement import Block, Expression, Function, If, Print, Return, Stmt, StmtVisitor, Var, While
 
 
 def stringify(o):
@@ -37,6 +37,7 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
         def clock(intr: Interpreter, args: list[object]):
             return time()
+
         clock.arity = 0  # MAYBE use LoxCallable ABC from LoxFunction?
         self.global_env["clock"] = clock
 
@@ -45,12 +46,16 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     def interpret(self, e: Expr | list[Stmt]):
         try:
-            if isinstance(e, list):
-                for st in e:
-                    self.execute(st)
-            else:
-                o = self.evaluate(e)
-                print(stringify(o), file=self.file)
+            try:
+                if isinstance(e, list):
+                    for st in e:
+                        self.execute(st)
+                else:
+                    o = self.evaluate(e)
+                    print(stringify(o), file=self.file)
+            except ReturnUnwind as e:
+                # TODO in chapter 11 change this from runtime to compile error
+                raise LoxRuntimeError(e.token, f"Tried to return '{stringify(e.value)}' outside function.") from e
         except LoxRuntimeError as e:
             self.err(e)
 
@@ -183,6 +188,12 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
             self.execute(i.then_branch)
         elif i.else_branch:
             self.execute(i.else_branch)
+
+    @override
+    def visit_return(self, ret: Return):
+        """Agree with the book logic, would be a pain to check each recursive call here for pending return!"""
+        o = self.evaluate(ret.value) if ret.value else None
+        raise ReturnUnwind(o, ret.keyword)
 
     @override
     def visit_print(self, pr: Print):

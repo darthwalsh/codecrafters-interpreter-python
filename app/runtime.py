@@ -8,3 +8,9 @@ class LoxRuntimeError(Exception):
         super().__init__(message)
         self.token = token
         self.message = message
+
+
+class ReturnUnwind(Exception):
+    def __init__(self, value: object, keyword: Token):
+        self.value = value
+        self.token = keyword

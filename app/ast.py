@@ -2,7 +2,7 @@ from typing import Tuple, override
 
 from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable, Visitor
 from app.scanner import Token, TokenType as TT
-from app.statement import Block, Expression, Function, If, Print, StmtVisitor, Var, While
+from app.statement import Block, Expression, Function, If, Print, Return, StmtVisitor, Var, While
 
 
 class AstPrinter(Visitor[str], StmtVisitor[str]):
@@ -21,7 +21,7 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
 
     @override
     def visit_call(self, call: Call):
-        return f"{self.print(call.callee)}({", ".join(self.print(a) for a in call.args)})"
+        return f"{self.print(call.callee)}({', '.join(self.print(a) for a in call.args)})"
 
     @override
     def visit_grouping(self, grouping: Grouping):
@@ -49,7 +49,7 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
     @override
     def visit_variable(self, variable: Variable):
         return variable.name.lexeme
-    
+
     @override
     def visit_block(self, block: Block):
         return f"{{ {' '.join(self.print(s) for s in block.statements)} }}"
@@ -63,11 +63,16 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
         body = self.visit_block(Block(f.body))
         params = ", ".join(p.lexeme for p in f.params)
         return f"fun {f.name.lexeme}({params}) {body}"
-    
+
     @override
     def visit_if(self, i: If):
         els = f" else [{self.print(i.else_branch)}]" if i.else_branch else ""
         return f"if ({self.print(i.condition)}) [{self.print(i.then_branch)}]{els}"
+
+    @override
+    def visit_return(self, ret: Return):
+        expr = f" {self.print(ret.value)}" if ret.value else ""
+        return f"return{expr};"
 
     @override
     def visit_print(self, pr: Print):
@@ -80,7 +85,7 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
     def visit_var(self, var: Var):
         init = f" = {self.print(var.initializer)}" if var.initializer else ""
         return f"var {var.name.lexeme}{init};"
-    
+
     @override
     def visit_while(self, w: While):
         return f"while ({self.print(w.condition)}) [{self.print(w.body)}]"
@@ -95,13 +100,13 @@ if __name__ == "__main__":
 
     print(AstPrinter().print(Print(expr)))
 
-    print(AstPrinter().print(Call(
-        Variable(Token(TT.IDENTIFIER, "a", 0, None)),
-        Token(TT.RIGHT_PAREN, ")", 0, 0),
-        [
-            Literal(123)
-        ]
-    )))
+    print(
+        AstPrinter().print(
+            Call(
+                Variable(Token(TT.IDENTIFIER, "a", 0, None)), Token(TT.RIGHT_PAREN, ")", 0, 0), [Literal(123)]
+            )
+        )
+    )
 
     def type_test() -> Visitor[str]:
         return AstPrinter()

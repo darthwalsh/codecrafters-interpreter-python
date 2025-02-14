@@ -71,6 +71,10 @@ class TestParser(unittest.TestCase):
         self.validate("fun foo(a) {}", "fun foo(a) {  }")
         self.validate("fun foo(a, b) {}", "fun foo(a, b) {  }")
 
+    def test_return(self):
+        self.validate("return a;", "return a;")  # MAYBE refactor when both eq: self.round_trip("return a;")
+        self.validate("return;", "return;")
+
     def test_if(self):
         self.validate("if (1) { 1; }", "if (1.0) [{ 1.0; }]")
         self.validate("if (x) y;", "if (x) [y;]")
