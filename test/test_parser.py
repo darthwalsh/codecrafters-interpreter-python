@@ -34,6 +34,9 @@ class TestParser(unittest.TestCase):
     def test_expression(self):
         self.validate("1;", "1.0;")
 
+    def test_var(self):
+        self.validate("var x = 1 + x;", "var x = (+ 1.0 x);")
+
     def test_print(self):
         self.validate("print 1;", "print 1.0;")
         

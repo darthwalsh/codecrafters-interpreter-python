@@ -1,9 +1,9 @@
 from typing import Callable
 
 from app.ast import AstPrinter
-from app.expression import Binary, Grouping, Literal, Unary
+from app.expression import Binary, Grouping, Literal, Unary, Variable
 from app.scanner import Token, TokenType, TokenType as TT
-from app.statement import Expression, Print
+from app.statement import Expression, Print, Var
 
 
 class ParseError(Exception):
@@ -64,7 +64,9 @@ class Parser:
         Statement Grammar
 
 program        → declaration* EOF ;
-declaration    → statement ;
+declaration    → varDecl
+               | statement ;
+varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 statement      → exprStmt
                | printStmt ;
 exprStmt       → expression ";" ;
@@ -73,11 +75,20 @@ printStmt      → "print" expression ";" ;
 
     def declaration(self):
         try:
-            # TODO VAR
+            if self.try_take(TT.VAR):
+                return self.var_declaration()
             return self.statement()
         except ParseError:
             self.synchronize()
             return None
+
+    def var_declaration(self):
+        name = self.take("Expect variable name.", TT.IDENTIFIER)
+        initializer = None
+        if self.try_take(TT.EQUAL):
+            initializer = self.expression()
+        self.take("Expect ';' after variable declaration.", TT.SEMICOLON)
+        return Var(name, initializer)
 
     def statement(self):
         if self.try_take(TT.PRINT):
@@ -99,7 +110,8 @@ factor         → unary ( ( "/" | "*" ) unary )* ;
 unary          → ( "!" | "-" ) unary
                | primary ;
 primary        → NUMBER | STRING | "true" | "false" | "nil"
-               | "(" expression ")" ;
+               | "(" expression ")"
+               | IDENTIFIER ;
     """
 
     def expression(self):
@@ -139,6 +151,9 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
             expr = self.expression()
             self.take("Expect ')' after expression", TT.RIGHT_PAREN)
             return Grouping(expr)
+        
+        if e := self.try_take(TT.IDENTIFIER):
+            return Variable(e)
 
         raise self.error(self.peek(), "Expect expression")
 

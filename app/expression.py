@@ -38,6 +38,12 @@ class Unary(Expr):
     right: Expr
 
 
+@dataclass(frozen=True)
+class Variable(Expr):
+    name: Token
+
+
+
 class Visitor[T](ABC):
     @abstractmethod
     def visit_binary(self, binary: Binary) -> T:
@@ -53,4 +59,8 @@ class Visitor[T](ABC):
 
     @abstractmethod
     def visit_unary(self, unary: Unary) -> T:
+        pass
+
+    @abstractmethod
+    def visit_variable(self, variable: Variable) -> T:
         pass

@@ -2,6 +2,7 @@ import io
 import unittest
 
 from app.interpreter import Interpreter, stringify
+from app.runtime import LoxRuntimeError
 from test.runner import parse
 
 
@@ -26,6 +27,15 @@ class TestInterpreter(unittest.TestCase):
     def validate_print(self, source, *out):
         buf = io.StringIO()
         interpreter = Interpreter(reraise, buf)
+        interpreter.interpret(parse(source))
+
+        self.assertSequenceEqual(buf.getvalue().splitlines(), out)
+
+    def statement_errors(self, source, *out):
+        buf = io.StringIO()
+        def err(e: LoxRuntimeError):
+            buf.write(e.message)
+        interpreter = Interpreter(err, buf)
         interpreter.interpret(parse(source))
 
         self.assertSequenceEqual(buf.getvalue().splitlines(), out)
@@ -91,6 +101,12 @@ class TestInterpreter(unittest.TestCase):
 
         self.validate_single_error_expr('"A" + 3')
         self.validate_single_error_expr('3 + "A"')
+
+    def test_var(self):
+        self.validate_print("var x = 1 + 2; print x;", "3")
+        self.validate_print("var x; print x;", "nil")
+        
+        self.statement_errors("print x; print 1;", "Undefined variable 'x'.")
 
     def test_statements(self):
         self.validate_print("1;")

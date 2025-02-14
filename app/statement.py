@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
 from app.expression import Expr
+from app.scanner import Token
 
 
 class Stmt(ABC):
@@ -22,6 +23,11 @@ class Print(Stmt):
     expr: Expr
 
 
+@dataclass(frozen=True)
+class Var(Stmt):
+    name: Token
+    initializer: Expr | None
+
 class StmtVisitor[T](ABC):
     @abstractmethod
     def visit_expression(self, ex: Expression) -> T:
@@ -29,4 +35,8 @@ class StmtVisitor[T](ABC):
 
     @abstractmethod
     def visit_print(self, pr: Print) -> T:
+        pass
+
+    @abstractmethod
+    def visit_var(self, var: Var) -> T:
         pass

@@ -46,7 +46,7 @@ def runtime_error(e):
 @contextmanager
 def step(stage):
     """Run block using stdout or stderr then exit on errors or command"""
-    print(f" {stage.upper()} ".center(20, "="), file=sys.stderr)
+    header(stage)
     final = stage == command
     yield sys.stdout if final else sys.stderr
     if exit_code:
@@ -54,6 +54,10 @@ def step(stage):
     if final:
         sys.exit()
     print(file=sys.stderr)
+
+
+def header(stage):
+    print(f" {stage.upper()} ".center(20, "="), file=sys.stderr)
 
 
 def main(source):
@@ -75,8 +79,13 @@ def main(source):
         with step("evaluate") as out:
             Interpreter(runtime_error, out).interpret(expr)
 
+    header("parse statement")
+    stmt = parser.parse_stmt()
+    print(AstPrinter().print(stmt), file=sys.stderr)
+    print(file=sys.stderr)
+
     with step("run") as out:
-        Interpreter(runtime_error, out).interpret(parser.parse_stmt())
+        Interpreter(runtime_error, out).interpret(stmt)
 
     sys.exit(f"Unknown command: {command}")
 

@@ -1,9 +1,11 @@
 import math
 import sys
 from typing import Callable, override
-from app.expression import Expr, Binary, Grouping, Literal, Unary, Visitor
-from app.scanner import Token, TokenType as TT
-from app.statement import Expression, Print, Stmt, StmtVisitor
+from app.runtime import LoxRuntimeError
+from app.environment import Environment
+from app.expression import Expr, Binary, Grouping, Literal, Unary, Variable, Visitor
+from app.scanner import TokenType as TT
+from app.statement import Expression, Print, Stmt, StmtVisitor, Var
 
 
 def stringify(o):
@@ -23,19 +25,12 @@ def truthy(o: object):
     return o not in (False, None)
 
 
-class LoxRuntimeError(Exception):
-    """Don't shadow builtin RuntimeError"""
-
-    def __init__(self, token: Token, message: str):
-        super().__init__(message)
-        self.token = token
-        self.message = message
-
-
 class Interpreter(Visitor[object], StmtVisitor[None]):
     def __init__(self, err: Callable, file=sys.stdout):
+        self.environment = Environment()
         self.err = err
         self.file = file
+        
 
     def interpret(self, e: Expr | list[Stmt]):
         try:
@@ -117,9 +112,17 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
                 raise RuntimeError("Impossible state")
 
     @override
+    def visit_variable(self, variable: Variable):
+        return self.environment[variable.name]
+
+    @override
     def visit_expression(self, ex: Expression):
         self.evaluate(ex.expr)
 
     @override
     def visit_print(self, pr: Print):
         print(stringify(self.evaluate(pr.expr)), file=self.file)
+
+    @override
+    def visit_var(self, var: Var):
+        self.environment[var.name.lexeme] = self.evaluate(var.initializer) if var.initializer else None
