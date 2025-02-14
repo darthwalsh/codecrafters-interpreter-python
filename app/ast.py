@@ -2,7 +2,7 @@ from typing import Tuple, override
 
 from app.expression import Assign, Binary, Expr, Grouping, Literal, Unary, Variable, Visitor
 from app.scanner import Token, TokenType as TT
-from app.statement import Block, Expression, Print, StmtVisitor, Var
+from app.statement import Block, Expression, If, Print, StmtVisitor, Var
 
 
 class AstPrinter(Visitor[str], StmtVisitor[str]):
@@ -48,6 +48,11 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
     @override
     def visit_expression(self, ex: Expression):
         return f"{self.print(ex.expr)};"
+    
+    @override
+    def visit_if(self, i: If):
+        els = f" else [{self.print(i.else_branch)}]" if i.else_branch else ""
+        return f"if ({self.print(i.condition)}) [{self.print(i.then_branch)}]{els}"
 
     @override
     def visit_print(self, pr: Print):

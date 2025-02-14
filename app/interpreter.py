@@ -6,7 +6,7 @@ from app.runtime import LoxRuntimeError
 from app.environment import Environment
 from app.expression import Assign, Expr, Binary, Grouping, Literal, Unary, Variable, Visitor
 from app.scanner import TokenType as TT
-from app.statement import Block, Expression, Print, Stmt, StmtVisitor, Var
+from app.statement import Block, Expression, If, Print, Stmt, StmtVisitor, Var
 
 
 def stringify(o):
@@ -132,6 +132,13 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
     @override
     def visit_expression(self, ex: Expression):
         self.evaluate(ex.expr)
+
+    @override
+    def visit_if(self, i: If):
+        if truthy(self.evaluate(i.condition)):
+            self.execute(i.then_branch)
+        elif i.else_branch:
+            self.execute(i.else_branch)
 
     @override
     def visit_print(self, pr: Print):

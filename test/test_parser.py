@@ -52,6 +52,13 @@ class TestParser(unittest.TestCase):
     def test_var(self):
         self.validate("var x = 1 + x;", "var x = (+ 1.0 x);")
 
+    def test_if(self):
+        self.validate("if (1) { 1; }", "if (1.0) [{ 1.0; }]")
+        self.validate("if (x) y;", "if (x) [y;]")
+        self.validate("if (x) y; else z;", "if (x) [y;] else [z;]")
+
+        self.validate("if (x) if (a) b; else z;", "if (x) [if (a) [b;] else [z;]]")
+
     def test_print(self):
         self.validate("print 1;", "print 1.0;")
         

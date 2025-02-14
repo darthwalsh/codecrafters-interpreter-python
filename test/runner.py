@@ -44,5 +44,7 @@ def parse(source, reporter=_report) -> Expr | list[Stmt]:
             raise AssertionError("Parse/Lex error:", errors)
 
 
-def reraise(e):
-    raise AssertionError from e
+def reraise(e, *other):
+    if isinstance(e, Exception):
+        raise AssertionError from e
+    raise AssertionError(e, *other)

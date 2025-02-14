@@ -23,6 +23,13 @@ class Expression(Stmt):
 
 
 @dataclass(frozen=True)
+class If(Stmt):
+    condition: Expr
+    then_branch: Stmt
+    else_branch: Stmt | None
+
+
+@dataclass(frozen=True)
 class Print(Stmt):
     expr: Expr
 
@@ -40,6 +47,10 @@ class StmtVisitor[T](ABC):
 
     @abstractmethod
     def visit_expression(self, ex: Expression) -> T:
+        pass
+
+    @abstractmethod
+    def visit_if(self, i: If) -> T:
         pass
 
     @abstractmethod

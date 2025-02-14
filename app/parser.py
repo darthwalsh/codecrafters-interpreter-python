@@ -2,7 +2,7 @@ from typing import Callable
 
 from app.expression import Assign, Binary, Grouping, Literal, Unary, Variable
 from app.scanner import Token, TokenType as TT
-from app.statement import Block, Expression, Print, Var
+from app.statement import Block, Expression, If, Print, Var
 
 
 class ParseError(Exception):
@@ -67,9 +67,12 @@ declaration    → varDecl
                | statement ;
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 statement      → exprStmt
+               | ifStmt
                | printStmt
                | block ;
 exprStmt       → expression ";" ;
+ifStmt         → "if" "(" expression ")" statement
+               ( "else" statement )? ;
 printStmt      → "print" expression ";" ;
 block          → "{" declaration* "}" ;
     """
@@ -96,12 +99,23 @@ block          → "{" declaration* "}" ;
             st = Print(self.expression())
             self.take("Expect ';' after value.", TT.SEMICOLON)
             return st
+
+        if self.try_take(TT.IF):
+            self.take("Expect '(' after 'if'.", TT.LEFT_PAREN)
+            condition = self.expression()
+            self.take("Expect ')' after condition.", TT.RIGHT_PAREN)
+            then_branch = self.statement()
+            else_branch = None
+            if self.try_take(TT.ELSE):
+                else_branch = self.statement()
+            return If(condition, then_branch, else_branch)
+
         if self.try_take(TT.LEFT_BRACE):
             return Block(self.block())
         st = Expression(self.expression())
         self.take("Expect ';' after expression.", TT.SEMICOLON)
         return st
-    
+
     def block(self):
         statements = []
         while not self.try_take(TT.RIGHT_BRACE):
@@ -132,7 +146,7 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
 
     def expression(self):
         return self.assignment()
-    
+
     def assignment(self):
         name = self.equality()
 
@@ -141,11 +155,10 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
 
             if isinstance(name, Variable):
                 return Assign(name.name, value)
-            
-            self.error(eq, "Invalid assignment target.")  # don't raise, can return
-        
-        return name
 
+            self.error(eq, "Invalid assignment target.")  # don't raise, can return
+
+        return name
 
     def equality(self):
         return self.take_binary(self.comparison, TT.BANG_EQUAL, TT.EQUAL_EQUAL)
@@ -181,7 +194,7 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
             expr = self.expression()
             self.take("Expect ')' after expression", TT.RIGHT_PAREN)
             return Grouping(expr)
-        
+
         if e := self.try_take(TT.IDENTIFIER):
             return Variable(e)
 

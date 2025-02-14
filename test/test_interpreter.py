@@ -115,6 +115,12 @@ class TestInterpreter(unittest.TestCase):
         self.validate_print("var x = 1; {x = 2; print x; } print x; ", "2", "2")
         self.validate_print("var x = 1; {var x = 2; print x; } print x; ", "2", "1")
 
+    def test_if(self):
+        self.validate_print("if (true)  print 1;", "1")
+        self.validate_print("if (false) print 1;")
+        self.validate_print("if (true)  print 1; else print 2;", "1")
+        self.validate_print("if (false) print 1; else print 2;", "2")
+
     def test_statements(self):
         self.validate_print("1;")
         self.validate_print("print 1;", "1")
