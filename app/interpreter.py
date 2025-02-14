@@ -1,10 +1,11 @@
 import math
 import sys
+from time import time
 from typing import Callable, override
 
 from app.runtime import LoxRuntimeError
 from app.environment import Environment
-from app.expression import Assign, Expr, Binary, Grouping, Literal, Logical, Unary, Variable, Visitor
+from app.expression import Assign, Call, Expr, Binary, Grouping, Literal, Logical, Unary, Variable, Visitor
 from app.scanner import TokenType as TT
 from app.statement import Block, Expression, If, Print, Stmt, StmtVisitor, Var, While
 
@@ -17,6 +18,8 @@ def stringify(o):
             return str(o).lower()
         case float() if o.is_integer():
             return str(int(o))
+        case func if callable(o):
+            return func.__name__
         case _:
             return str(o)
 
@@ -28,7 +31,14 @@ def truthy(o: object):
 
 class Interpreter(Visitor[object], StmtVisitor[None]):
     def __init__(self, err: Callable, file=sys.stdout):
-        self.environment = Environment()
+        self.global_env = Environment()
+        self.environment = self.global_env
+
+        def clock(intr: Interpreter, args: list[object]):
+            return time()
+        clock.arity = 0  # TODO check this works as LoxCallable
+        self.global_env["clock"] = clock
+
         self.err = err
         self.file = file
 
@@ -96,6 +106,18 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
                 raise RuntimeError("Impossible state")
 
     @override
+    def visit_call(self, call: Call):
+        callee = self.evaluate(call.callee)
+        args = [self.evaluate(a) for a in call.args]
+
+        if not callable(callee):
+            raise LoxRuntimeError(call.paren, "Can only call functions and classes.")
+        if len(args) != callee.arity:
+            raise LoxRuntimeError(call.paren, f"Expected {callee.arity} arguments but got {len(args)}.")
+
+        return callee(self, args)
+
+    @override
     def visit_grouping(self, grouping: Grouping):
         return self.evaluate(grouping.value)
 
@@ -161,7 +183,7 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
     @override
     def visit_var(self, var: Var):
         self.environment[var.name.lexeme] = self.evaluate(var.initializer) if var.initializer else None
-    
+
     @override
     def visit_while(self, w: While):
         while truthy(self.evaluate(w.condition)):

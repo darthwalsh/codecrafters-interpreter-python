@@ -28,6 +28,13 @@ class Binary(Expr):
 
 
 @dataclass(frozen=True)
+class Call(Expr):
+    callee: Expr
+    paren: Token
+    args: list[Expr]
+
+
+@dataclass(frozen=True)
 class Grouping(Expr):
     value: Expr
 
@@ -62,6 +69,10 @@ class Visitor[T](ABC):
 
     @abstractmethod
     def visit_binary(self, binary: Binary) -> T:
+        pass
+
+    @abstractmethod
+    def visit_call(self, call: Call) -> T:
         pass
 
     @abstractmethod

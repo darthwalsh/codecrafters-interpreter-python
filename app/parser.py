@@ -1,6 +1,6 @@
 from typing import Callable
 
-from app.expression import Assign, Binary, Grouping, Literal, Logical, Unary, Variable
+from app.expression import Assign, Binary, Call, Grouping, Literal, Logical, Unary, Variable
 from app.scanner import Token, TokenType as TT
 from app.statement import Block, Expression, If, Print, Var, While
 
@@ -197,8 +197,9 @@ equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term           → factor ( ( "-" | "+" ) factor )* ;
 factor         → unary ( ( "/" | "*" ) unary )* ;
-unary          → ( "!" | "-" ) unary
-               | primary ;
+unary          → ( "!" | "-" ) unary | call ;
+call           → primary ( "(" arguments? ")" )* ;
+arguments      → expression ( "," expression )* ;
 primary        → NUMBER | STRING | "true" | "false" | "nil"
                | "(" expression ")"
                | IDENTIFIER ;
@@ -241,7 +242,26 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
     def unary(self):
         if op := self.try_take(TT.BANG, TT.MINUS):
             return Unary(op, self.unary())
-        return self.primary()
+        return self.call()
+    
+    def call(self):
+        e = self.primary()
+        while self.try_take(TT.LEFT_PAREN):
+            e = self.finish_call(e)
+        return e
+    
+    def finish_call(self, callee):
+        if p := self.try_take(TT.RIGHT_PAREN):
+            return Call(callee, p, [])
+        
+        args = [self.expression()]
+        while self.try_take(TT.COMMA):
+            if len(args) >= 255:
+                self.error(self.peek(), "Can't have more than 255 arguments.")
+            args.append(self.expression())
+        p = self.take("Expect ')' after arguments.", TT.RIGHT_PAREN)
+        return Call(callee, p, args)
+
 
     def take_binary(self, f, *types, tt=Binary):
         e = f()

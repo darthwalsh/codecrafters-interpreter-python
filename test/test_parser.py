@@ -46,6 +46,13 @@ class TestParser(unittest.TestCase):
         self.validate("!1", "(! 1.0)")
         self.validate("!!1", "(! (! 1.0))")
 
+    def test_call(self):
+        self.validate("a()", "a()")
+        self.validate('"abc"(x)(y,z)', "abc(x)(y, z)")
+
+        big = f"a({"x, " * 255}1.0)"
+        self.error(big, "Can't have more than 255 arguments.", big)
+
     def test_expression(self):
         self.validate("1;", "1.0;")
 

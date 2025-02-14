@@ -1,6 +1,6 @@
 from typing import Tuple, override
 
-from app.expression import Assign, Binary, Expr, Grouping, Literal, Logical, Unary, Variable, Visitor
+from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable, Visitor
 from app.scanner import Token, TokenType as TT
 from app.statement import Block, Expression, If, Print, StmtVisitor, Var, While
 
@@ -18,6 +18,10 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
     @override
     def visit_binary(self, binary: Binary):
         return self.parens(binary.operator.lexeme, binary.left, binary.right)
+
+    @override
+    def visit_call(self, call: Call):
+        return f"{self.print(call.callee)}({", ".join(self.print(a) for a in call.args)})"
 
     @override
     def visit_grouping(self, grouping: Grouping):
@@ -84,6 +88,14 @@ if __name__ == "__main__":
     )
 
     print(AstPrinter().print(Print(expr)))
+
+    print(AstPrinter().print(Call(
+        Variable(Token(TT.IDENTIFIER, "a", 0, None)),
+        Token(TT.RIGHT_PAREN, ")", 0, 0),
+        [
+            Literal(123)
+        ]
+    )))
 
     def type_test() -> Visitor[str]:
         return AstPrinter()

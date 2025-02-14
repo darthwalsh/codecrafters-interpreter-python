@@ -1,4 +1,5 @@
 import io
+from time import time
 import unittest
 
 from app.interpreter import Interpreter, stringify
@@ -20,11 +21,15 @@ class TestInterpreter(unittest.TestCase):
         self.assertEqual(len(runtime_err), 1)
 
     def validate_print(self, source, *out):
+        lines = self.run_stmt(source)
+        self.assertSequenceEqual(lines, out)
+
+    def run_stmt(self, source):
         buf = io.StringIO()
         interpreter = Interpreter(reraise, buf)
         interpreter.interpret(parse(source, reraise))
 
-        self.assertSequenceEqual(buf.getvalue().splitlines(), out)
+        return buf.getvalue().splitlines()
 
     def statement_errors(self, source, *out):
         buf = io.StringIO()
@@ -98,6 +103,13 @@ class TestInterpreter(unittest.TestCase):
 
         self.validate_single_error_expr('"A" + 3')
         self.validate_single_error_expr('3 + "A"')
+
+    def test_clock(self):
+        self.validate_print("print clock;", "clock")
+        # TODO test name of source func
+
+        s, = self.run_stmt("print clock();")
+        self.assertAlmostEqual(float(s), time(), places=0)  # within one sec
 
     def test_logical(self):
         self.validate_print("print 1   and 2;", "2")
