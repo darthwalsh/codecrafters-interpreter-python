@@ -63,7 +63,7 @@ class TestParser(unittest.TestCase):
         self.validate("{}", "{  }")
         self.validate("{1;}{}", "{ 1.0; } {  }")
 
-        self.error("{", "Expect '}' after block.", "{  }")
+        self.error("{", "Expect '}' after block.", "")
 
     def test_trailing(self):
         self.error("1 1", "Expected end of expression", "1.0")

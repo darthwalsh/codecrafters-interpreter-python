@@ -106,7 +106,7 @@ block          → "{" declaration* "}" ;
         statements = []
         while not self.try_take(TT.RIGHT_BRACE):
             if self.at_end():
-                self.error(self.peek(), "Expect '}' after block.")
+                raise self.error(self.peek(), "Expect '}' after block.")
                 break
 
             if st := self.declaration():
