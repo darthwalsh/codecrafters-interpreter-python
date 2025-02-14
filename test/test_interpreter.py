@@ -132,6 +132,26 @@ class TestInterpreter(unittest.TestCase):
 
         self.validate_print("fun a(x) {} print a; ", "<fn a>")
 
+    def test_closure(self):
+        self.validate_print(
+            """
+fun makeCounter() { 
+    var i = 0;
+    fun count() {
+        i = i + 1;
+        print i;
+    } 
+    return count;
+}
+
+var counter = makeCounter();
+counter();
+counter();
+""",
+            "1",
+            "2",
+        )
+
     def test_var(self):
         self.validate_print("var x = 1 + 2; print x;", "3")
         self.validate_print("var x; print x;", "nil")

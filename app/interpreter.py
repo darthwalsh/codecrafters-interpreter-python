@@ -180,7 +180,7 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     @override
     def visit_function(self, f: Function):
-        self.environment[f.name.lexeme] = LoxFunction(f)
+        self.environment[f.name.lexeme] = LoxFunction(f, self.environment)
 
     @override
     def visit_if(self, i: If):
