@@ -105,7 +105,8 @@ class TestInterpreter(unittest.TestCase):
     def test_var(self):
         self.validate_print("var x = 1 + 2; print x;", "3")
         self.validate_print("var x; print x;", "nil")
-        
+        self.validate_print("var x = 1; var x = 2; print x;", "2")
+
         self.statement_errors("print x; print 1;", "Undefined variable 'x'.")
 
     def test_statements(self):
