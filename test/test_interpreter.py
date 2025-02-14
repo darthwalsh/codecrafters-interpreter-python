@@ -22,7 +22,7 @@ class TestInterpreter(unittest.TestCase):
     def validate_print(self, source, *out):
         buf = io.StringIO()
         interpreter = Interpreter(reraise, buf)
-        interpreter.interpret(parse(source))
+        interpreter.interpret(parse(source, reraise))
 
         self.assertSequenceEqual(buf.getvalue().splitlines(), out)
 
@@ -98,6 +98,17 @@ class TestInterpreter(unittest.TestCase):
 
         self.validate_single_error_expr('"A" + 3')
         self.validate_single_error_expr('3 + "A"')
+
+    def test_logical(self):
+        self.validate_print("print 1   and 2;", "2")
+        self.validate_print("print nil and 2;", "nil")
+        self.validate_print("print 1    or 2;", "1")
+        self.validate_print("print nil  or 2;", "2")
+
+        self.validate_print("var x = 1; true  and (x=2); print x;", "2")
+        self.validate_print("var x = 1; false and (x=2); print x;", "1")
+        self.validate_print("var x = 1; true   or (x=2); print x;", "1")
+        self.validate_print("var x = 1; false  or (x=2); print x;", "2")
 
     def test_assign(self):
         self.validate_print("var x; print x = 3; print x;", "3", "3")

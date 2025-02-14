@@ -4,7 +4,7 @@ from typing import Callable, override
 
 from app.runtime import LoxRuntimeError
 from app.environment import Environment
-from app.expression import Assign, Expr, Binary, Grouping, Literal, Unary, Variable, Visitor
+from app.expression import Assign, Expr, Binary, Grouping, Literal, Logical, Unary, Variable, Visitor
 from app.scanner import TokenType as TT
 from app.statement import Block, Expression, If, Print, Stmt, StmtVisitor, Var
 
@@ -100,6 +100,20 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
         return self.evaluate(grouping.value)
 
     @override
+    def visit_logical(self, logical: Logical):
+        left = self.evaluate(logical.left)
+        match logical.operator.type:
+            case TT.OR:
+                if truthy(left):
+                    return left
+            case TT.AND:
+                if not truthy(left):
+                    return left
+            case _:
+                raise RuntimeError("Impossible state")
+        return self.evaluate(logical.right)
+
+    @override
     def visit_literal(self, literal: Literal):
         return literal.value
 
@@ -119,7 +133,7 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
     @override
     def visit_variable(self, variable: Variable):
         return self.environment[variable.name]
-    
+
     @override
     def visit_block(self, block: Block):
         self.environment = Environment(self.environment)

@@ -38,6 +38,13 @@ class Literal(Expr):
 
 
 @dataclass(frozen=True)
+class Logical(Expr):
+    left: Expr
+    operator: Token
+    right: Expr
+
+
+@dataclass(frozen=True)
 class Unary(Expr):
     operator: Token
     right: Expr
@@ -59,6 +66,10 @@ class Visitor[T](ABC):
 
     @abstractmethod
     def visit_grouping(self, grouping: Grouping) -> T:
+        pass
+
+    @abstractmethod
+    def visit_logical(self, logical: Logical) -> T:
         pass
 
     @abstractmethod

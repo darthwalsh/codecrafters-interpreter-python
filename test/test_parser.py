@@ -24,6 +24,13 @@ class TestParser(unittest.TestCase):
         self.validate("(true)", "(group true)")
         self.validate("((true))", "(group (group true))")
 
+    def test_logical(self):
+        self.validate("x and y", "(AND x y)")
+        self.validate("x or y", "(OR x y)")
+
+        self.validate("x and y or y", "(OR (AND x y) y)")
+        self.validate("x or y and z", "(OR x (AND y z))")
+
     def test_equality(self):
         self.validate("1 == 1", "(== 1.0 1.0)")
         self.validate("1 == 2 == 3", "(== (== 1.0 2.0) 3.0)")

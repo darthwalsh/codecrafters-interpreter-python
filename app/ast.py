@@ -1,6 +1,6 @@
 from typing import Tuple, override
 
-from app.expression import Assign, Binary, Expr, Grouping, Literal, Unary, Variable, Visitor
+from app.expression import Assign, Binary, Expr, Grouping, Literal, Logical, Unary, Variable, Visitor
 from app.scanner import Token, TokenType as TT
 from app.statement import Block, Expression, If, Print, StmtVisitor, Var
 
@@ -22,6 +22,11 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
     @override
     def visit_grouping(self, grouping: Grouping):
         return self.parens("group", grouping.value)
+
+    @override
+    def visit_logical(self, logical: Logical):
+        """Uppercase is different than Binary"""
+        return self.parens(logical.operator.lexeme.upper(), logical.left, logical.right)
 
     @override
     def visit_literal(self, literal: Literal):

@@ -1,6 +1,6 @@
 from typing import Callable
 
-from app.expression import Assign, Binary, Grouping, Literal, Unary, Variable
+from app.expression import Assign, Binary, Grouping, Literal, Logical, Unary, Variable
 from app.scanner import Token, TokenType as TT
 from app.statement import Block, Expression, If, Print, Var
 
@@ -132,7 +132,9 @@ block          → "{" declaration* "}" ;
 
 expression     → assignment ;
 assignment     → IDENTIFIER "=" assignment
-               | equality ;
+               | logic_or ;
+logic_or       → logic_and ( "or" logic_and )* ;
+logic_and      → equality ( "and" equality )* ;
 equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term           → factor ( ( "-" | "+" ) factor )* ;
@@ -148,7 +150,7 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
         return self.assignment()
 
     def assignment(self):
-        name = self.equality()
+        name = self.logic_or()
 
         if eq := self.try_take(TT.EQUAL):
             value = self.assignment()
@@ -159,6 +161,12 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
             self.error(eq, "Invalid assignment target.")  # don't raise, can return
 
         return name
+    
+    def logic_or(self):
+        return self.take_binary(self.logic_and, TT.OR, tt=Logical)
+    
+    def logic_and(self):
+        return self.take_binary(self.equality, TT.AND, tt=Logical)
 
     def equality(self):
         return self.take_binary(self.comparison, TT.BANG_EQUAL, TT.EQUAL_EQUAL)
@@ -177,10 +185,10 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
             return Unary(op, self.unary())
         return self.primary()
 
-    def take_binary(self, f, *types):
+    def take_binary(self, f, *types, tt=Binary):
         e = f()
         while op := self.try_take(*types):
-            e = Binary(e, op, f())
+            e = tt(e, op, f())
         return e
 
     def primary(self):
