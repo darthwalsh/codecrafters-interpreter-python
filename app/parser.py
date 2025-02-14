@@ -2,7 +2,7 @@ from typing import Callable
 
 from app.expression import Assign, Binary, Grouping, Literal, Logical, Unary, Variable
 from app.scanner import Token, TokenType as TT
-from app.statement import Block, Expression, If, Print, Var
+from app.statement import Block, Expression, If, Print, Var, While
 
 
 class ParseError(Exception):
@@ -69,11 +69,13 @@ varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 statement      → exprStmt
                | ifStmt
                | printStmt
+               | whileStmt
                | block ;
 exprStmt       → expression ";" ;
 ifStmt         → "if" "(" expression ")" statement
                ( "else" statement )? ;
 printStmt      → "print" expression ";" ;
+whileStmt      → "while" "(" expression ")" statement ;
 block          → "{" declaration* "}" ;
     """
 
@@ -109,6 +111,13 @@ block          → "{" declaration* "}" ;
             if self.try_take(TT.ELSE):
                 else_branch = self.statement()
             return If(condition, then_branch, else_branch)
+        
+        if self.try_take(TT.WHILE):
+            self.take("Expect '(' after 'while'.", TT.LEFT_PAREN)
+            condition = self.expression()
+            self.take("Expect ')' after condition.", TT.RIGHT_PAREN)
+            body = self.statement()
+            return While(condition, body)
 
         if self.try_take(TT.LEFT_BRACE):
             return Block(self.block())

@@ -66,6 +66,10 @@ class TestParser(unittest.TestCase):
 
         self.validate("if (x) if (a) b; else z;", "if (x) [if (a) [b;] else [z;]]")
 
+    def test_while(self):
+        self.validate("while (1) 1;", "while (1.0) [1.0;]")
+        self.validate("while (1) { 1; }", "while (1.0) [{ 1.0; }]")
+
     def test_print(self):
         self.validate("print 1;", "print 1.0;")
         

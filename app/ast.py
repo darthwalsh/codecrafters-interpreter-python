@@ -2,7 +2,7 @@ from typing import Tuple, override
 
 from app.expression import Assign, Binary, Expr, Grouping, Literal, Logical, Unary, Variable, Visitor
 from app.scanner import Token, TokenType as TT
-from app.statement import Block, Expression, If, Print, StmtVisitor, Var
+from app.statement import Block, Expression, If, Print, StmtVisitor, Var, While
 
 
 class AstPrinter(Visitor[str], StmtVisitor[str]):
@@ -70,6 +70,10 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
     def visit_var(self, var: Var):
         init = f" = {self.print(var.initializer)}" if var.initializer else ""
         return f"var {var.name.lexeme}{init};"
+    
+    @override
+    def visit_while(self, w: While):
+        return f"while ({self.print(w.condition)}) [{self.print(w.body)}]"
 
 
 if __name__ == "__main__":

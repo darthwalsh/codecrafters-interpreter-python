@@ -6,7 +6,7 @@ from app.runtime import LoxRuntimeError
 from app.environment import Environment
 from app.expression import Assign, Expr, Binary, Grouping, Literal, Logical, Unary, Variable, Visitor
 from app.scanner import TokenType as TT
-from app.statement import Block, Expression, If, Print, Stmt, StmtVisitor, Var
+from app.statement import Block, Expression, If, Print, Stmt, StmtVisitor, Var, While
 
 
 def stringify(o):
@@ -161,3 +161,8 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
     @override
     def visit_var(self, var: Var):
         self.environment[var.name.lexeme] = self.evaluate(var.initializer) if var.initializer else None
+    
+    @override
+    def visit_while(self, w: While):
+        while truthy(self.evaluate(w.condition)):
+            self.execute(w.body)

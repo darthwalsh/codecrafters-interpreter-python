@@ -40,6 +40,12 @@ class Var(Stmt):
     initializer: Expr | None
 
 
+@dataclass(frozen=True)
+class While(Stmt):
+    condition: Expr
+    body: Stmt
+
+
 class StmtVisitor[T](ABC):
     @abstractmethod
     def visit_block(self, block: Block) -> T:
@@ -59,4 +65,8 @@ class StmtVisitor[T](ABC):
 
     @abstractmethod
     def visit_var(self, var: Var) -> T:
+        pass
+
+    @abstractmethod
+    def visit_while(self, w: While) -> T:
         pass
