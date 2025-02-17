@@ -17,6 +17,7 @@ In this challenge you'll build an interpreter for [Lox](https://craftinginterpre
 
 1. Ensure you have `python (3.12)` installed locally
 2. Run `./your_program.sh` to run your program, which is implemented in `app/main.py`.
+3. Run tests with `pipenv run tests`
 
 ## Things I'm proud of
 - Pretty decent unit tests for scanner, parser, interpreter, and main modules
@@ -81,3 +82,26 @@ GetWindowThreadProcessId = user32.GetWindowThreadProcessId
 GetWindowThreadProcessId.argtypes = [ctypes.wintypes.HWND, ctypes.POINTER(ctypes.wintypes.DWORD)]
 GetWindowThreadProcessId.restype = ctypes.wintypes.UINT
 ```
+
+### Test cases from the codecrafters course definition
+*See branch https://github.com/darthwalsh/codecrafters-interpreter-python/tree/wip-test-codecrafters-course*
+
+Running all test cases can be kind of slow. Compare running a trivial program from 
+* E2E tests that `imports main`; 50 microseconds
+* `python3.12 -m app.main run`: 400 milliseconds
+* `pipenv run python3.12 -m app.main`: 800 milliseconds = 10,000x slower to add pipenv and python overheads!
+
+Also writing tests by hand can be a drag, so I had the idea to run smoke tests from [github.com/codecrafters-io/build-your-own-interpreter course-definition.yml](https://github.com/codecrafters-io/build-your-own-interpreter/blob/0fc863d1f4389d34705bf8529eff0a6d60127e15/course-definition.yml#L5105) (MIT License)
+
+Instead of invoking their test runner which takes an entire second per test case, I could have a python in-process loop that executes all tests "instantly" like this:
+1. Add requests and pyyaml to Pipfile `dev-packages` which seems not to break the official test runner
+2. Test runnner downloads and caches `course-definition.yml`
+3. Parse YAML file for `.description_md`
+4. Parse the markdown (see branch TODO comments, got stuck making this robust)
+5. Load state from disk of course N expected to pass
+6. Execute test cases that are known to pass: course 1 through course N
+7. Attempt to pass course N+1, N+2, etc. which affects disk-state but not test-case result status
+8. Would be great to have these tests results from a file-tree-watcher
+
+Other sources for test cases:
+- figure out how to use https://github.com/codecrafters-io/interpreter-tester repo (not OSS) for testing: it has [this template](https://github.com/codecrafters-io/interpreter-tester/blob/2d0a2ab76a8524481af1442ab0f05e7383bca876/test_programs/c4/2.lox) or [this ANSI output](https://github.com/codecrafters-io/interpreter-tester/blob/2d0a2ab76a8524481af1442ab0f05e7383bca876/test_programs/c4/2.lox), which also has a [golang Lox golden implementation](https://github.com/codecrafters-io/interpreter-tester/blob/2d0a2ab76a8524481af1442ab0f05e7383bca876/internal/lox/parser.go)...
