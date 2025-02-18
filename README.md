@@ -18,6 +18,7 @@ In this challenge you'll build an interpreter for [Lox](https://craftinginterpre
 1. Ensure you have `python (3.12)` installed locally
 2. Run `./your_program.sh` to run your program, which is implemented in `app/main.py`.
 3. Run tests with `pipenv run tests`
+3. Run coverage with `pipenv run cov`
 
 ## Things I'm proud of
 - Pretty decent unit tests for scanner, parser, interpreter, and main modules
@@ -57,7 +58,8 @@ In this challenge you'll build an interpreter for [Lox](https://craftinginterpre
 - Use my [JustAnotherYamlParser](https://github.com/darthwalsh/JustAnotherYamlParser) BNF evaluator
 	- I think it would produce the exact [Parse Tree](https://craftinginterpreters.com/representing-code.html#implementing-syntax-trees) so we would need a light tree-transform into a workaround AST
 	- Could probably delete much of the Token / TokenType / Scanner / Parser modules?
-	- BUT, could you get most of the same errors? Would want to check test_parser coverage.
+	- BUT, could you get most of the same errors? 
+        - [x] Would want to check test_parser coverage.
 	- Could this take the AST and generate the datatypes and visitor interface?
 - How hard would it be to "just" enable FFI in a similar way to c# with decorators?
 ```csharp

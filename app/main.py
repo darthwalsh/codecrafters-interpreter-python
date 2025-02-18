@@ -19,7 +19,7 @@ def count_errors():
     """HACK to quickly crash on infinite error loops"""
     for _ in range(MAX_ERRORS):
         yield
-    raise RuntimeError(f"ERRORS OVER {MAX_ERRORS}!!!")
+    raise RuntimeError(f"ERRORS OVER {MAX_ERRORS}!!!")  # pragma: no cover
 
 
 error_counter = count_errors()
@@ -90,7 +90,7 @@ def main(source):
     sys.exit(f"Unknown command: {command}")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     if len(sys.argv) != 3:
         sys.exit("Usage: ./your_program.sh [tokenize|parse|evaluate|run] <filename>")
 

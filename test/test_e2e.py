@@ -5,17 +5,6 @@ import unittest
 from app import main
 
 
-class TextStream:
-    def __init__(self):
-        self.data = []
-
-    def write(self, s):
-        self.data.append(s)
-
-    def lines(self):
-        return "".join(self.data).splitlines()
-
-
 class TestE2E(unittest.TestCase):
     def check(self, command, source, code, out, *errors):
         """Returns actual stderr"""
@@ -28,7 +17,15 @@ class TestE2E(unittest.TestCase):
                     actual_code = 0
                     main.main(source)
                 except SystemExit as e:
-                    actual_code = e.code or 0
+                    match e.code:
+                        case None:
+                            actual_code = 0
+                        case str():
+                            print(e.code, file=f2)
+                            actual_code = 1
+                        case _:
+                            actual_code = e.code
+                    
 
         self.assertEqual(actual_code, code)
         self.assertEqual(f1.getvalue().strip(), out.strip())
@@ -37,6 +34,14 @@ class TestE2E(unittest.TestCase):
         self.assertSequenceEqual(actual_errors, errors)
 
         return f2.getvalue()
+
+    def test_unknown(self):
+        err = self.check(
+            "foobar",
+            "1.0;",
+            1,
+            "",
+        )
 
     def test_tokenize(self):
         self.check("tokenize", "1 nil", 0, "NUMBER 1 1.0\nNIL nil null\nEOF  null")
@@ -85,5 +90,5 @@ class TestE2E(unittest.TestCase):
         self.assertIn("Operand must be a number.\n[line 2]", err)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     unittest.main()

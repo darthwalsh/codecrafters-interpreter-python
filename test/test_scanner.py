@@ -1,22 +1,36 @@
 import unittest
 
 from app.scanner import TokenType as TT
-from test.runner import scan_tokens, errors
+from test.runner import reraise, scan_tokens
 
 # See https://github.com/munificent/craftinginterpreters/tree/01e6f5b8f3e5dfa65674c2f9cf4700d73ab41cf8/test/scanning
 
 
-
 class TestScanner(unittest.TestCase):
     def validate(self, source, *types, error=None):
-        tokens = scan_tokens(source)
+        errors = []
+
+        def report(_line, _where, message):
+            errors.append(message)
+
+        tokens = scan_tokens(source, report)
         self.assertSequenceEqual([t.type for t in tokens], types + (TT.EOF,))
         self.assertEqual(errors, [error] if error else [])
 
     def lit(self, source, expected):
-        it = iter(scan_tokens(source))
+        it = iter(scan_tokens(source, reraise))
         self.assertEqual(next(it).literal, expected)
         self.assertEqual(next(it).type, TT.EOF)
+
+    def test_reraise(self):
+        nie = NotImplementedError()
+        with self.assertRaises(AssertionError) as e:
+            reraise(nie)
+        self.assertEqual(e.exception.__cause__, nie)
+
+        with self.assertRaises(AssertionError) as e:
+            self.lit("$", "Whatever")
+        self.assertEqual(e.exception.args[2], "Unexpected character: $")
 
     def test_eof(self):
         self.validate("")

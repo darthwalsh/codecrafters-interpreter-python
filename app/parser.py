@@ -42,8 +42,6 @@ class Parser:
         """The only way to move current"""
         try:
             return self.peek()
-        except IndexError:
-            return None
         finally:
             self.current += 1
 
@@ -101,11 +99,11 @@ block          → "{" declaration* "}" ;
         except ParseError:
             self.synchronize()
             return None
-        
+
     def fun(self, kind):
         name = self.take(f"Expect {kind} name.", TT.IDENTIFIER)
         self.take(f"Expect '(' after {kind} name.", TT.LEFT_PAREN)
-        
+
         params = []
         if not self.try_take(TT.RIGHT_PAREN):
             params.append(self.take("Expect parameter name.", TT.IDENTIFIER))
@@ -146,11 +144,11 @@ block          → "{" declaration* "}" ;
         if ret := self.try_take(TT.RETURN):
             if self.try_take(TT.SEMICOLON):
                 return Return(ret, None)
-            
+
             st = Return(ret, self.expression())
             self.take("Expect ';' after return value.", TT.SEMICOLON)
             return st  # MAYBE refactor this to a small context manager
-        
+
         if self.try_take(TT.WHILE):
             self.take("Expect '(' after 'while'.", TT.LEFT_PAREN)
             condition = self.expression()
@@ -166,7 +164,7 @@ block          → "{" declaration* "}" ;
         st = Expression(self.expression())
         self.take("Expect ';' after expression.", TT.SEMICOLON)
         return st
-    
+
     def for_statement(self):
         self.take("Expect '(' after 'for'.", TT.LEFT_PAREN)
 
@@ -183,7 +181,7 @@ block          → "{" declaration* "}" ;
         else:
             condition = self.expression()
             self.take("Expect ';' after loop condition.", TT.SEMICOLON)
-        
+
         if self.try_take(TT.RIGHT_PAREN):
             increment = None
         else:
@@ -194,7 +192,7 @@ block          → "{" declaration* "}" ;
 
         if increment:
             body = Block([body, Expression(increment)])
-        
+
         if condition is None:
             condition = Literal(True)
 
@@ -204,7 +202,6 @@ block          → "{" declaration* "}" ;
             body = Block([initializer, body])
 
         return body
-        
 
     def block(self):
         statements = []
@@ -252,10 +249,10 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
             self.error(eq, "Invalid assignment target.")  # don't raise, can return
 
         return name
-    
+
     def logic_or(self):
         return self.take_binary(self.logic_and, TT.OR, tt=Logical)
-    
+
     def logic_and(self):
         return self.take_binary(self.equality, TT.AND, tt=Logical)
 
@@ -275,17 +272,17 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
         if op := self.try_take(TT.BANG, TT.MINUS):
             return Unary(op, self.unary())
         return self.call()
-    
+
     def call(self):
         e = self.primary()
         while self.try_take(TT.LEFT_PAREN):
             e = self.finish_call(e)
         return e
-    
+
     def finish_call(self, callee):
         if p := self.try_take(TT.RIGHT_PAREN):
             return Call(callee, p, [])
-        
+
         args = [self.expression()]
         while self.try_take(TT.COMMA):
             if len(args) >= 255:
@@ -293,7 +290,6 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
             args.append(self.expression())
         p = self.take("Expect ')' after arguments.", TT.RIGHT_PAREN)
         return Call(callee, p, args)
-
 
     def take_binary(self, f, *types, tt=Binary):
         e = f()
@@ -324,9 +320,9 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
         while not self.at_end():
             if self.try_take(TT.SEMICOLON):
                 return
-            match self.pop().type:
-                case TT.CLASS | TT.FUN | TT.VAR | TT.FOR | TT.IF | TT.WHILE | TT.PRINT | TT.RETURN:
-                    return
+            if self.peek().type in (TT.CLASS, TT.FUN, TT.VAR, TT.FOR, TT.IF, TT.WHILE, TT.PRINT, TT.RETURN):
+                return
+            self.pop()
 
     def error(self, token: Token, message: str):
         lexeme = f"'{token.lexeme}'" if token.type != TT.EOF else "end"

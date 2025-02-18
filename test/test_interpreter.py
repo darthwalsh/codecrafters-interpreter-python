@@ -2,22 +2,24 @@ import io
 from time import time
 import unittest
 
+from app.expression import Literal, Logical, Unary
 from app.interpreter import Interpreter, stringify
 from app.runtime import LoxRuntimeError
+from app.scanner import Token, TokenType as TT
 from test.runner import parse, reraise
 
 
 class TestInterpreter(unittest.TestCase):
     def validate(self, source, expected):
         interpreter = Interpreter(reraise)
-        s = stringify(interpreter.evaluate(parse(source)))
+        s = stringify(interpreter.evaluate(parse(source, reraise)))
         self.assertEqual(s, expected)
 
     def validate_single_error_expr(self, source):
         """If expr has runtime error, one error nicely reported"""
         runtime_err = []
         interpreter = Interpreter(runtime_err.append)
-        interpreter.interpret(parse(source))
+        interpreter.interpret(parse(source, reraise))
         self.assertEqual(len(runtime_err), 1)
 
     def validate_print(self, source, *out):
@@ -38,7 +40,7 @@ class TestInterpreter(unittest.TestCase):
             buf.write(e.message)
 
         interpreter = Interpreter(err, buf)
-        interpreter.interpret(parse(source))
+        interpreter.interpret(parse(source, reraise))
 
         self.assertSequenceEqual(buf.getvalue().splitlines(), out)
 
@@ -48,6 +50,10 @@ class TestInterpreter(unittest.TestCase):
         self.validate('"ab"', "ab")
         self.validate("true", "true")
         self.validate("nil", "nil")
+
+    def test_call(self):
+        self.validate_single_error_expr('1()')
+        self.validate_single_error_expr('clock(1)')
 
     def test_grouping(self):
         self.validate("(1)", "1")
@@ -78,7 +84,9 @@ class TestInterpreter(unittest.TestCase):
     def test_inequality(self):
         self.validate("1 < 2", "true")
         self.validate("1 < 1", "false")
+        self.validate("1 > 1", "false")
         self.validate("4 >= 5", "false")
+        self.validate("4 <= 5", "true")
 
         self.validate_single_error_expr('"A" < "B"')
 
@@ -193,3 +201,20 @@ counter();
         self.validate_print("1;")
         self.validate_print("print 1;", "1")
         self.validate_print("print 1; print 1.2;", "1", "1.2")
+
+    def test_impossible(self):
+        with self.assertRaises(RuntimeError) as e:
+            Interpreter(reraise).visit_unary(Unary(Token(TT.WHILE, "while", 1, None), Literal(1.0)))
+        assert str(e.exception) == "Impossible state"
+
+        with self.assertRaises(RuntimeError) as e:
+            Interpreter(reraise).visit_binary(
+                Logical(Literal(1.0), Token(TT.AND, "and", 1, None), Literal(1.0))
+            )
+        assert str(e.exception) == "Impossible state"
+
+        with self.assertRaises(RuntimeError) as e:
+            Interpreter(reraise).visit_logical(
+                Logical(Literal(1.0), Token(TT.PLUS, "+", 1, None), Literal(1.0))
+            )
+        assert str(e.exception) == "Impossible state"

@@ -91,7 +91,7 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
         return f"while ({self.view(w.condition)}) [{self.view(w.body)}]"
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     expr = Binary(
         Unary(Token(TT.MINUS, "-", 1, None), Literal(123)),
         Token(TT.STAR, "*", 1, None),

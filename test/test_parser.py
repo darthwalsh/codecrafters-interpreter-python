@@ -1,7 +1,7 @@
 import unittest
 
 from app.ast import AstPrinter
-from test.runner import parse, errors, parse_expr, parse_stmt, reraise
+from test.runner import parse, parse_expr, parse_stmt, reraise
 
 
 class TestParser(unittest.TestCase):
@@ -10,7 +10,12 @@ class TestParser(unittest.TestCase):
         self.assertEqual(AstPrinter().view(expr), printed)
 
     def error(self, source, error: str, parsed: str | None):
-        e = parse_stmt(source) if ";" in source or "{" in source else parse_expr(source)
+        errors = []
+
+        def report(_line, _where, message):
+            errors.append(message)
+
+        e = parse_stmt(source, report) if ";" in source or "{" in source else parse_expr(source, report)
         self.assertEqual(errors, [error])
 
         if parsed is None:
@@ -118,3 +123,7 @@ class TestParser(unittest.TestCase):
 
     def test_trailing_after_parens(self):
         self.error("(72 +)", "Expect expression", None)
+
+    def test_synchronize(self):
+        self.error("var x = + + ; print 1;", "Expect expression", "print 1.0;")
+        self.error("var x = + + + print 1;", "Expect expression", "print 1.0;")

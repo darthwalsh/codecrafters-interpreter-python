@@ -14,9 +14,11 @@ name = "pypi"
 [packages]
 
 [dev-packages]
+coverage = "*"
 
 [requires]
 python_version = "3"
 
 [scripts]
 test = "python -m unittest"
+cov = "bash -c 'coverage run -m unittest && coverage xml && coverage report --fail-under 100 --show-missing --skip-covered'"
