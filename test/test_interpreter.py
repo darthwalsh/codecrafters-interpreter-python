@@ -12,14 +12,14 @@ from test.runner import parse, reraise
 class TestInterpreter(unittest.TestCase):
     def validate(self, source, expected):
         interpreter = Interpreter(reraise)
-        s = stringify(interpreter.evaluate(parse(source, reraise)))
+        s = stringify(interpreter.evaluate(parse(source)))
         self.assertEqual(s, expected)
 
     def validate_single_error_expr(self, source):
         """If expr has runtime error, one error nicely reported"""
         runtime_err = []
         interpreter = Interpreter(runtime_err.append)
-        interpreter.interpret(parse(source, reraise))
+        interpreter.interpret(parse(source))
         self.assertEqual(len(runtime_err), 1)
 
     def validate_print(self, source, *out):
@@ -29,7 +29,7 @@ class TestInterpreter(unittest.TestCase):
     def run_stmt(self, source):
         buf = io.StringIO()
         interpreter = Interpreter(reraise, buf)
-        interpreter.interpret(parse(source, reraise))
+        interpreter.interpret(parse(source))
 
         return buf.getvalue().splitlines()
 
@@ -40,7 +40,7 @@ class TestInterpreter(unittest.TestCase):
             buf.write(e.message)
 
         interpreter = Interpreter(err, buf)
-        interpreter.interpret(parse(source, reraise))
+        interpreter.interpret(parse(source))
 
         self.assertSequenceEqual(buf.getvalue().splitlines(), out)
 

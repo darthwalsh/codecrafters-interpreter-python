@@ -1,12 +1,12 @@
 import unittest
 
 from app.ast import AstPrinter
-from test.runner import parse, parse_expr, parse_stmt, reraise
+from test.runner import parse, parse_expr, parse_stmt
 
 
 class TestParser(unittest.TestCase):
     def validate(self, source, printed):
-        expr = parse(source, reraise)
+        expr = parse(source)
         self.assertEqual(AstPrinter().view(expr), printed)
 
     def error(self, source, error: str, parsed: str | None):
@@ -71,7 +71,7 @@ class TestParser(unittest.TestCase):
     def test_var(self):
         self.validate("var x = 1 + x;", "var x = (+ 1.0 x);")
 
-    def test_funtion(self):
+    def test_function(self):
         self.validate("fun foo() { x; }", "fun foo() { x; }")
         self.validate("fun foo(a) {}", "fun foo(a) {  }")
         self.validate("fun foo(a, b) {}", "fun foo(a, b) {  }")

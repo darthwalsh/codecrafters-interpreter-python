@@ -11,14 +11,14 @@ Completed extensions:
 
 This my Python solutions to the ["Build your own Interpreter" Challenge](https://app.codecrafters.io/courses/interpreter/overview). It follows the book [Crafting Interpreters](https://craftinginterpreters.com/) by Robert Nystrom.
 
-In this challenge you'll build an interpreter for [Lox](https://craftinginterpreters.com/the-lox-language.html), a simple scripting language. Along the way, you'll learn about tokenization, ASTs, tree-walk interpreters and more. There is a [Java implemenation](https://github.com/munificent/craftinginterpreters/blob/4a840f70f69c6ddd17cfef4f6964f8e1bcd8c3d4/java/com/craftinginterpreters/lox/Lox.java#L23) on the book's repo (and C too!) which are easy to run locally if you want to 
+In this challenge you'll build an interpreter for [Lox](https://craftinginterpreters.com/the-lox-language.html), a simple scripting language. Along the way, you'll learn about tokenization, ASTs, tree-walk interpreters and more. There is a [Java implementation](https://github.com/munificent/craftinginterpreters/blob/4a840f70f69c6ddd17cfef4f6964f8e1bcd8c3d4/java/com/craftinginterpreters/lox/Lox.java#L23) on the book's repo (and C too!) which are easy to run locally if you want to 
 
 ## Running program
 
 1. Ensure you have `python (3.12)` installed locally
 2. Run `./your_program.sh` to run your program, which is implemented in `app/main.py`.
 3. Run tests with `pipenv run tests`
-3. Run coverage with `pipenv run cov`
+3. Assert 100% coverage with `pipenv run cov`
 
 ## Things I'm proud of
 - Pretty decent unit tests for scanner, parser, interpreter, and main modules
@@ -97,7 +97,7 @@ Also writing tests by hand can be a drag, so I had the idea to run smoke tests f
 
 Instead of invoking their test runner which takes an entire second per test case, I could have a python in-process loop that executes all tests "instantly" like this:
 1. Add requests and pyyaml to Pipfile `dev-packages` which seems not to break the official test runner
-2. Test runnner downloads and caches `course-definition.yml`
+2. Test runner downloads and caches `course-definition.yml`
 3. Parse YAML file for `.description_md`
 4. Parse the markdown (see branch TODO comments, got stuck making this robust)
 5. Load state from disk of course N expected to pass

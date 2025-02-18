@@ -11,8 +11,24 @@
 "python.testing.pytestEnabled": false,
 "python.testing.unittestEnabled": true,
 "cSpell.words": [
+    "abstractmethod",
+    "argtypes",
+    "CDLL",
     "codecrafters",
     "Crafters",
-    "debugpy"
+    "ctypes",
+    "dataclass",
+    "datatypes",
+    "debugpy",
+    "getpid",
+    "libc",
+    "mypy",
+    "Nystrom",
+    "Pipfile",
+    "pylance",
+    "pypi",
+    "pyyaml",
+    "restype",
+    "wintypes"
 ]
 }

@@ -1,7 +1,7 @@
 import unittest
 
-from app.scanner import TokenType as TT
-from test.runner import reraise, scan_tokens
+from app.scanner import Scanner, TokenType as TT
+from test.runner import reraise
 
 # See https://github.com/munificent/craftinginterpreters/tree/01e6f5b8f3e5dfa65674c2f9cf4700d73ab41cf8/test/scanning
 
@@ -13,12 +13,12 @@ class TestScanner(unittest.TestCase):
         def report(_line, _where, message):
             errors.append(message)
 
-        tokens = scan_tokens(source, report)
+        tokens = Scanner(source, report).scan_tokens()
         self.assertSequenceEqual([t.type for t in tokens], types + (TT.EOF,))
         self.assertEqual(errors, [error] if error else [])
 
     def lit(self, source, expected):
-        it = iter(scan_tokens(source, reraise))
+        it = iter(Scanner(source, reraise).scan_tokens())
         self.assertEqual(next(it).literal, expected)
         self.assertEqual(next(it).type, TT.EOF)
 

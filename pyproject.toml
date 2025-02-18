@@ -2,7 +2,6 @@
 [tool.coverage.report]
 exclude_also = [
     "@abstractmethod",
-    # "raise RuntimeError\\(\"Impossible state\"\\)"
 ]
 
 [tool.ruff]

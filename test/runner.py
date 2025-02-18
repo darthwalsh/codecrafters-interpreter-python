@@ -1,32 +1,28 @@
 from app.expression import Expr
 from app.parser import Parser
-from app.scanner import Scanner
+from app.scanner import Scanner, TokenType
 from app.statement import Stmt
 
 
-errors = []  # HACK useful to have global, but maybe make parse_* below return new errors list
-
-
-def scan_tokens(source, reporter):
-    scanner = Scanner(source, reporter)
-    return scanner.scan_tokens()
-
-
 def parse_expr(source, reporter):
-    tokens = scan_tokens(source, reporter)
+    tokens = Scanner(source, reporter).scan_tokens()
     return Parser(tokens, reporter).parse_expr()
 
 
 def parse_stmt(source, reporter):
-    tokens = scan_tokens(source, reporter)
+    tokens = Scanner(source, reporter).scan_tokens()
     return Parser(tokens, reporter).parse_stmt()
 
 
-def parse(source, reporter) -> Expr | list[Stmt]:
-    """Hacky workaround to parse either. Asserts no errors"""
-    if ";" in source or "{" in source:  # Might regret this later, so don't move this to app/
-        return parse_stmt(source, reporter)
-    return parse_expr(source, reporter)
+def parse(source) -> Expr | list[Stmt]:
+    """Hacky workaround to parse either. Raises on compile errors"""
+    tokens = Scanner(source, reraise).scan_tokens()
+    parser = Parser(tokens, reraise)
+
+    # Might regret this magic, so don't move this to app/
+    if any(t.type in (TokenType.SEMICOLON, TokenType.LEFT_BRACE) for t in tokens):
+        return parser.parse_stmt()
+    return parser.parse_expr()
 
 
 def reraise(e, *other):

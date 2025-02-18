@@ -42,6 +42,7 @@ class TestE2E(unittest.TestCase):
             1,
             "",
         )
+        self.assertIn("Unknown command: foobar\n", err)
 
     def test_tokenize(self):
         self.check("tokenize", "1 nil", 0, "NUMBER 1 1.0\nNIL nil null\nEOF  null")
