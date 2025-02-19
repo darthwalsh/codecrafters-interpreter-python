@@ -1,6 +1,7 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import IntEnum, auto
-from typing import Callable, overload
+from typing import overload
 
 
 # https://craftinginterpreters.com/scanning.html#token-type

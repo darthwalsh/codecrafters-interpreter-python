@@ -1,7 +1,8 @@
-from typing import Tuple, override
+from typing import override
 
 from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable, Visitor
-from app.scanner import Token, TokenType as TT
+from app.scanner import Token
+from app.scanner import TokenType as TT
 from app.statement import Block, Expression, Function, If, Print, Return, Stmt, StmtVisitor, Var, While
 
 
@@ -78,7 +79,7 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
     def visit_print(self, pr: Print):
         return f"print {self.view(pr.expr)};"
 
-    def parens(self, name, *exprs: Tuple[Expr]):
+    def parens(self, name, *exprs: tuple[Expr]):
         return f"({name} {self.view(list(exprs))})"
 
     @override

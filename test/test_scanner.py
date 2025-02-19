@@ -1,6 +1,7 @@
 import unittest
 
-from app.scanner import Scanner, TokenType as TT
+from app.scanner import Scanner
+from app.scanner import TokenType as TT
 from test.runner import reraise
 
 # See https://github.com/munificent/craftinginterpreters/tree/01e6f5b8f3e5dfa65674c2f9cf4700d73ab41cf8/test/scanning

@@ -1,12 +1,13 @@
 import math
 import sys
+from collections.abc import Callable
 from time import time
-from typing import Callable, override
+from typing import override
 
+from app.environment import Environment
+from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable, Visitor
 from app.func import LoxFunction
 from app.runtime import LoxRuntimeError, ReturnUnwind
-from app.environment import Environment
-from app.expression import Assign, Call, Expr, Binary, Grouping, Literal, Logical, Unary, Variable, Visitor
 from app.scanner import TokenType as TT
 from app.statement import Block, Expression, Function, If, Print, Return, Stmt, StmtVisitor, Var, While
 
@@ -82,7 +83,7 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
                 return left == right
 
             case TT.PLUS:
-                if isinstance(left, (str, float)) and type(left) is type(right):
+                if isinstance(left, str | float) and type(left) is type(right):
                     return left + right
                 raise LoxRuntimeError(binary.operator, "Operands must be two numbers or two strings.")
 

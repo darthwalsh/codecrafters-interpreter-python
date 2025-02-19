@@ -1,3 +1,5 @@
+[project]
+requires-python = ">= 3.12"
 
 [tool.coverage.report]
 exclude_also = [
@@ -6,3 +8,13 @@ exclude_also = [
 
 [tool.ruff]
 line-length = 110
+
+[tool.ruff.lint]
+extend-select = [
+  # see codes in https://docs.astral.sh/ruff/rules/
+  "I",      # Validate isort rules
+  "ISC001", # single-line-implicit-string-concatenation
+  "RUF010", # explicit-f-string-type-conversion
+  "RUF013", # implicit-optional
+  "UP",     # pyupgrade automatically upgrade syntax for newer python versions
+]

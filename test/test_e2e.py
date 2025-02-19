@@ -1,6 +1,6 @@
-from contextlib import redirect_stderr, redirect_stdout
 import io
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 
 from app import main
 

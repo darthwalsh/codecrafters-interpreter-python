@@ -1,8 +1,9 @@
+from collections.abc import Callable
 from contextlib import contextmanager
-from typing import Callable
 
 from app.expression import Assign, Binary, Call, Grouping, Literal, Logical, Unary, Variable
-from app.scanner import char_tokens, Token, TokenType as TT
+from app.scanner import Token, char_tokens
+from app.scanner import TokenType as TT
 from app.statement import Block, Expression, Function, If, Print, Return, Stmt, Var, While
 
 

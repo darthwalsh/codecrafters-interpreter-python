@@ -16,9 +16,10 @@ In this challenge you'll build an interpreter for [Lox](https://craftinginterpre
 ## Running program
 
 1. Ensure you have `python (3.12)` installed locally
-2. Run `./your_program.sh` to run your program, which is implemented in `app/main.py`.
-3. Run tests with `pipenv run tests`
-3. Assert 100% coverage with `pipenv run cov`
+1. Run `./your_program.sh` to run your program, which is implemented in `app/main.py`.
+1. Run tests with `pipenv run tests`
+1. Assert 100% coverage with `pipenv run cov`
+1. Format and lint code using [`ruff`](https://github.com/astral-sh/ruff) using `pipenv run fmt`
 
 ## Things I'm proud of
 - Pretty decent unit tests for scanner, parser, interpreter, and main modules

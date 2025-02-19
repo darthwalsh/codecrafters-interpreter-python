@@ -15,6 +15,7 @@ name = "pypi"
 
 [dev-packages]
 coverage = "*"
+ruff = "*"
 
 [requires]
 python_version = "3"
@@ -22,3 +23,4 @@ python_version = "3"
 [scripts]
 test = "python -m unittest"
 cov = "bash -c 'coverage run -m unittest && coverage xml && coverage report --fail-under 100 --show-missing --skip-covered'"
+fmt = "bash -c 'ruff check --fix && ruff format'"  # When fixing, Ruff's lint hook must be placed before formatter

@@ -3,7 +3,8 @@ from contextlib import contextmanager
 
 from app.environment import Environment
 from app.runtime import LoxRuntimeError
-from app.scanner import Token, TokenType as TT
+from app.scanner import Token
+from app.scanner import TokenType as TT
 
 
 class Wrapper:

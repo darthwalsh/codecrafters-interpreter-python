@@ -1,11 +1,12 @@
 import io
-from time import time
 import unittest
+from time import time
 
 from app.expression import Literal, Logical, Unary
 from app.interpreter import Interpreter, stringify
 from app.runtime import LoxRuntimeError
-from app.scanner import Token, TokenType as TT
+from app.scanner import Token
+from app.scanner import TokenType as TT
 from test.runner import parse, reraise
 
 
