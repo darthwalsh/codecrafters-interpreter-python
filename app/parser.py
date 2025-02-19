@@ -1,8 +1,9 @@
+from contextlib import contextmanager
 from typing import Callable
 
 from app.expression import Assign, Binary, Call, Grouping, Literal, Logical, Unary, Variable
-from app.scanner import Token, TokenType as TT
-from app.statement import Block, Expression, Function, If, Print, Return, Var, While
+from app.scanner import char_tokens, Token, TokenType as TT
+from app.statement import Block, Expression, Function, If, Print, Return, Stmt, Var, While
 
 
 class ParseError(Exception):
@@ -50,10 +51,17 @@ class Parser:
             if self.peek().type == t:
                 return self.pop()
 
-    def take(self, message, *types: TT):
-        if not (t := self.try_take(*types)):
+    def take(self, message, t: TT):
+        if not (t := self.try_take(t)):
             raise self.error(self.peek(), message)
         return t
+
+    token_type_2_char = {v: k for k, v in char_tokens.items()}
+
+    @contextmanager
+    def followed_by(self, t: TT, after: str):
+        yield
+        self.take(f"Expect '{Parser.token_type_2_char[t]}' after {after}", t)
 
     """
         https://craftinginterpreters.com/appendix-i.html
@@ -89,7 +97,7 @@ whileStmt      → "while" "(" expression ")" statement ;
 block          → "{" declaration* "}" ;
     """
 
-    def declaration(self):
+    def declaration(self) -> Stmt | None:
         try:
             if self.try_take(TT.FUN):
                 return self.fun("function")
@@ -116,20 +124,18 @@ block          → "{" declaration* "}" ;
 
     def var_declaration(self):
         name = self.take("Expect variable name.", TT.IDENTIFIER)
-        initializer = None
-        if self.try_take(TT.EQUAL):
-            initializer = self.expression()
-        self.take("Expect ';' after variable declaration.", TT.SEMICOLON)
-        return Var(name, initializer)
+        with self.followed_by(TT.SEMICOLON, "variable declaration."):
+            if self.try_take(TT.EQUAL):
+                return Var(name, self.expression())
+            return Var(name, None)
 
     def statement(self):
         if self.try_take(TT.FOR):
             return self.for_statement()
 
         if self.try_take(TT.PRINT):
-            st = Print(self.expression())
-            self.take("Expect ';' after value.", TT.SEMICOLON)
-            return st
+            with self.followed_by(TT.SEMICOLON, "value."):
+                return Print(self.expression())
 
         if self.try_take(TT.IF):
             self.take("Expect '(' after 'if'.", TT.LEFT_PAREN)
@@ -144,10 +150,8 @@ block          → "{" declaration* "}" ;
         if ret := self.try_take(TT.RETURN):
             if self.try_take(TT.SEMICOLON):
                 return Return(ret, None)
-
-            st = Return(ret, self.expression())
-            self.take("Expect ';' after return value.", TT.SEMICOLON)
-            return st  # MAYBE refactor this to a small context manager
+            with self.followed_by(TT.SEMICOLON, "return value."):
+                return Return(ret, self.expression())
 
         if self.try_take(TT.WHILE):
             self.take("Expect '(' after 'while'.", TT.LEFT_PAREN)
@@ -161,9 +165,8 @@ block          → "{" declaration* "}" ;
         return self.expression_statement()
 
     def expression_statement(self):
-        st = Expression(self.expression())
-        self.take("Expect ';' after expression.", TT.SEMICOLON)
-        return st
+        with self.followed_by(TT.SEMICOLON, "expression."):
+            return Expression(self.expression())
 
     def for_statement(self):
         self.take("Expect '(' after 'for'.", TT.LEFT_PAREN)
@@ -208,7 +211,6 @@ block          → "{" declaration* "}" ;
         while not self.try_take(TT.RIGHT_BRACE):
             if self.at_end():
                 raise self.error(self.peek(), "Expect '}' after block.")
-                break
 
             if st := self.declaration():
                 statements.append(st)
@@ -268,6 +270,12 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
     def factor(self):
         return self.take_binary(self.unary, TT.STAR, TT.SLASH)
 
+    def take_binary(self, take_expr, *types, tt=Binary):
+        e = take_expr()
+        while op := self.try_take(*types):
+            e = tt(e, op, take_expr())
+        return e
+
     def unary(self):
         if op := self.try_take(TT.BANG, TT.MINUS):
             return Unary(op, self.unary())
@@ -291,12 +299,6 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
         p = self.take("Expect ')' after arguments.", TT.RIGHT_PAREN)
         return Call(callee, p, args)
 
-    def take_binary(self, f, *types, tt=Binary):
-        e = f()
-        while op := self.try_take(*types):
-            e = tt(e, op, f())
-        return e
-
     def primary(self):
         if e := self.try_take(TT.NUMBER, TT.STRING, TT.NIL):
             return Literal(e.literal)
@@ -305,9 +307,8 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
             return Literal(e.type == TT.TRUE)
 
         if e := self.try_take(TT.LEFT_PAREN):
-            expr = self.expression()
-            self.take("Expect ')' after expression", TT.RIGHT_PAREN)
-            return Grouping(expr)
+            with self.followed_by(TT.RIGHT_PAREN, "expression"):
+                return Grouping(self.expression())
 
         if e := self.try_take(TT.IDENTIFIER):
             return Variable(e)
