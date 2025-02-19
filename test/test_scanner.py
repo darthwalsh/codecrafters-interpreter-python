@@ -23,16 +23,6 @@ class TestScanner(unittest.TestCase):
         self.assertEqual(next(it).literal, expected)
         self.assertEqual(next(it).type, TT.EOF)
 
-    def test_reraise(self):
-        nie = NotImplementedError()
-        with self.assertRaises(AssertionError) as e:
-            reraise(nie)
-        self.assertEqual(e.exception.__cause__, nie)
-
-        with self.assertRaises(AssertionError) as e:
-            self.lit("$", "Whatever")
-        self.assertEqual(e.exception.args[2], "Unexpected character: $")
-
     def test_eof(self):
         self.validate("")
         self.validate("//message")

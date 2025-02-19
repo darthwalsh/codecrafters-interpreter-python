@@ -54,13 +54,13 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
                 else:
                     o = self.evaluate(e)
                     print(stringify(o), file=self.file)
-            except ReturnUnwind as e:
+            except ReturnUnwind as ex:
                 # TODO in chapter 11 change this from runtime to compile error
                 raise LoxRuntimeError(
-                    e.token, f"Tried to return '{stringify(e.value)}' outside function."
-                ) from e
-        except LoxRuntimeError as e:
-            self.runtime_error(e)
+                    ex.token, f"Tried to return '{stringify(ex.value)}' outside function."
+                ) from ex
+        except LoxRuntimeError as ex:
+            self.runtime_error(ex)
 
     def execute(self, st: Stmt):
         st.accept(self)
@@ -83,7 +83,9 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
                 return left == right
 
             case TT.PLUS:
-                if isinstance(left, str | float) and type(left) is type(right):
+                if isinstance(left, str) and isinstance(right, str):
+                    return left + right
+                if isinstance(left, float) and isinstance(right, float):
                     return left + right
                 raise LoxRuntimeError(binary.operator, "Operands must be two numbers or two strings.")
 

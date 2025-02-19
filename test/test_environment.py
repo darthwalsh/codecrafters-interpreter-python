@@ -7,6 +7,10 @@ from app.scanner import Token
 from app.scanner import TokenType as TT
 
 
+def identifier(name: str):
+    return Token(TT.IDENTIFIER, name, 0, None)
+
+
 class Wrapper:
     """Easily set properties to write to Environment"""
 
@@ -14,13 +18,13 @@ class Wrapper:
         self.__dict__["env"] = env
 
     def __getattr__(self, name: str):
-        return self.env[Token(TT.IDENTIFIER, name, None, 0)]
+        return self.env[identifier(name)]
 
     def __setattr__(self, key: str, value: object):
         self.env[key] = value
 
     def assign(self, name: str, value: object):
-        return self.env.assign(Token(TT.IDENTIFIER, name, None, 0), value)
+        return self.env.assign(identifier(name), value)
 
 
 class TestEnvironment(unittest.TestCase):

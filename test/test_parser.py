@@ -1,7 +1,7 @@
 import unittest
 
 from app.ast import AstPrinter
-from test.runner import parse, parse_expr, parse_stmt
+from test.runner import parse, parse_for_errors
 
 
 class TestParser(unittest.TestCase):
@@ -9,19 +9,21 @@ class TestParser(unittest.TestCase):
         expr = parse(source)
         self.assertEqual(AstPrinter().view(expr), printed)
 
-    def error(self, source, error: str, parsed: str | None):
+    def error(self, source, error: str, expected: str | None):
         errors = []
 
         def report(_line, _where, message):
             errors.append(message)
 
-        e = parse_stmt(source, report) if ";" in source or "{" in source else parse_expr(source, report)
+        e = parse_for_errors(source, report)
         self.assertEqual(errors, [error])
 
-        if parsed is None:
+        if expected is None:
             self.assertIsNone(e)
         else:
-            self.assertEqual(AstPrinter().view(e), parsed)
+            if e is None:
+                raise AssertionError("Expected expression, got None.")  # pragma: no cover
+            self.assertEqual(AstPrinter().view(e), expected)
 
     def test_primary(self):
         self.validate("1", "1.0")

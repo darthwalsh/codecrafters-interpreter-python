@@ -1,13 +1,15 @@
+from typing import Self
+
 from app.runtime import LoxRuntimeError
 from app.scanner import Token
 
 
 class Environment:
-    def __init__(self, parent: "Environment" = None):
+    def __init__(self, parent: Self | None = None):
         self.values: dict[str, object] = {}
-        self.parent: Environment | None = parent
+        self.parent = parent
 
-    def __getitem__(self, name: Token):
+    def __getitem__(self, name: Token) -> object:
         try:
             return self.values[name.lexeme]
         except KeyError:

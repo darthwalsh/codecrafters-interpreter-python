@@ -76,6 +76,8 @@ def main(source):
         with step("parse") as out:
             if expr:
                 print(AstPrinter().view(expr), file=out)
+        if not expr:
+            sys.exit("IMPOSSIBLE STATE: None returned without parse error")  # pragma: no cover
 
         with step("evaluate") as out:
             Interpreter(runtime_error, out).interpret(expr)

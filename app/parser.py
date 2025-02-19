@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from contextlib import contextmanager
 
-from app.expression import Assign, Binary, Call, Grouping, Literal, Logical, Unary, Variable
+from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable
 from app.scanner import Token, char_tokens
 from app.scanner import TokenType as TT
 from app.statement import Block, Expression, Function, If, Print, Return, Stmt, Var, While
@@ -18,14 +18,14 @@ class Parser:
         self.report = report
 
     def parse_stmt(self):
-        statements = []
+        statements: list[Stmt] = []
         while not self.at_end():
             if st := self.declaration():
                 statements.append(st)
             # MAYBE: else should list really have None?
         return statements
 
-    def parse_expr(self):
+    def parse_expr(self) -> Expr | None:
         try:
             e = self.expression()
         except ParseError:
@@ -53,9 +53,9 @@ class Parser:
                 return self.pop()
 
     def take(self, t: TT, message: str):
-        if not (t := self.try_take(t)):
-            raise self.error(self.peek(), message)
-        return t
+        if to := self.try_take(t):
+            return to
+        raise self.error(self.peek(), message)
 
     def expect(self, t: TT, *, after: str):
         return self.take(t, f"Expect '{Parser.token_type_2_char[t]}' after {after}")
@@ -240,7 +240,7 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
                | IDENTIFIER ;
     """
 
-    def expression(self):
+    def expression(self) -> Expr:
         return self.assignment()
 
     def assignment(self):
@@ -274,7 +274,7 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
     def factor(self):
         return self.take_binary(self.unary, TT.STAR, TT.SLASH)
 
-    def take_binary(self, take_expr, *types, tt=Binary):
+    def take_binary(self, take_expr: Callable[[], Expr], *types, tt: type[Logical] | type[Binary] = Binary):
         e = take_expr()
         while op := self.try_take(*types):
             e = tt(e, op, take_expr())

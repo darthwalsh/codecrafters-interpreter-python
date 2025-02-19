@@ -22,11 +22,11 @@
     "debugpy",
     "getpid",
     "libc",
-    "mypy",
     "Nystrom",
     "Pipfile",
-    "pylance",
     "pypi",
+    "pyright",
+    "pyupgrade",
     "pyyaml",
     "restype",
     "wintypes"

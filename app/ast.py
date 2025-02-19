@@ -7,7 +7,7 @@ from app.statement import Block, Expression, Function, If, Print, Return, Stmt, 
 
 
 class AstPrinter(Visitor[str], StmtVisitor[str]):
-    def view(self, expr: Expr | list[Stmt]):
+    def view(self, expr: Expr | Stmt | list[Expr] | list[Stmt]):
         if isinstance(expr, list):
             return " ".join(self.view(e) for e in expr)
         return expr.accept(self)
@@ -79,7 +79,7 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
     def visit_print(self, pr: Print):
         return f"print {self.view(pr.expr)};"
 
-    def parens(self, name, *exprs: tuple[Expr]):
+    def parens(self, name, *exprs: Expr):
         return f"({name} {self.view(list(exprs))})"
 
     @override

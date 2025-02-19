@@ -2,7 +2,7 @@ import io
 import unittest
 from time import time
 
-from app.expression import Literal, Logical, Unary
+from app.expression import Binary, Literal, Logical, Unary
 from app.interpreter import Interpreter, stringify
 from app.runtime import LoxRuntimeError
 from app.scanner import Token
@@ -13,7 +13,10 @@ from test.runner import parse, reraise
 class TestInterpreter(unittest.TestCase):
     def validate(self, source, expected):
         interpreter = Interpreter(reraise)
-        s = stringify(interpreter.evaluate(parse(source)))
+        expr = parse(source)
+        if isinstance(expr, list):
+            raise AssertionError("Expected expression, got statements")
+        s = stringify(interpreter.evaluate(expr))
         self.assertEqual(s, expected)
 
     def validate_single_error_expr(self, source):
@@ -210,7 +213,7 @@ counter();
 
         with self.assertRaises(RuntimeError) as e:
             Interpreter(reraise).visit_binary(
-                Logical(Literal(1.0), Token(TT.AND, "and", 1, None), Literal(1.0))
+                Binary(Literal(1.0), Token(TT.AND, "and", 1, None), Literal(1.0))
             )
         assert str(e.exception) == "Impossible state"
 
@@ -219,3 +222,8 @@ counter();
                 Logical(Literal(1.0), Token(TT.PLUS, "+", 1, None), Literal(1.0))
             )
         assert str(e.exception) == "Impossible state"
+
+    def test_validate(self):
+        with self.assertRaises(AssertionError) as e:
+            self.validate("1;", "whatever")
+        self.assertEqual(str(e.exception), "Expected expression, got statements")

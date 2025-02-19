@@ -20,6 +20,7 @@ In this challenge you'll build an interpreter for [Lox](https://craftinginterpre
 1. Run tests with `pipenv run tests`
 1. Assert 100% coverage with `pipenv run cov`
 1. Format and lint code using [`ruff`](https://github.com/astral-sh/ruff) using `pipenv run fmt`
+1. Type check with [`pyright`](https://microsoft.github.io/pyright) using `pipenv run check`
 
 ## Things I'm proud of
 - Pretty decent unit tests for scanner, parser, interpreter, and main modules
@@ -51,11 +52,8 @@ In this challenge you'll build an interpreter for [Lox](https://craftinginterpre
 ## Bugs
 - [ ] Have yet to implement [Chapter 11](https://craftinginterpreters.com/resolving-and-binding.html) onwards
 - [ ] main script errors out if there are compiler/runtime 9000 errors.
+- [ ] Couple type errors for `.arity`
 ## Extra ideas
-- Add mypy or pylance full type checking?
-- Refactor dozens of the `e = parse(); assert_match(SEMICOLON); return e`
-	- i.e. context manager `with after(SEMICOLON): return e` should work the same?
-- Runner 
 - Use my [JustAnotherYamlParser](https://github.com/darthwalsh/JustAnotherYamlParser) BNF evaluator
 	- I think it would produce the exact [Parse Tree](https://craftinginterpreters.com/representing-code.html#implementing-syntax-trees) so we would need a light tree-transform into a workaround AST
 	- Could probably delete much of the Token / TokenType / Scanner / Parser modules?
