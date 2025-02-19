@@ -51,17 +51,20 @@ class Parser:
             if self.peek().type == t:
                 return self.pop()
 
-    def take(self, message, t: TT):
+    def take(self, t: TT, message: str):
         if not (t := self.try_take(t)):
             raise self.error(self.peek(), message)
         return t
 
+    def expect(self, t: TT, *, after: str):
+        return self.take(t, f"Expect '{Parser.token_type_2_char[t]}' after {after}")
+
     token_type_2_char = {v: k for k, v in char_tokens.items()}
 
     @contextmanager
-    def followed_by(self, t: TT, after: str):
+    def followed_by(self, t: TT, *, after: str):
         yield
-        self.take(f"Expect '{Parser.token_type_2_char[t]}' after {after}", t)
+        self.take(t, f"Expect '{Parser.token_type_2_char[t]}' after {after}")
 
     """
         https://craftinginterpreters.com/appendix-i.html
@@ -109,22 +112,22 @@ block          → "{" declaration* "}" ;
             return None
 
     def fun(self, kind):
-        name = self.take(f"Expect {kind} name.", TT.IDENTIFIER)
-        self.take(f"Expect '(' after {kind} name.", TT.LEFT_PAREN)
+        name = self.take(TT.IDENTIFIER, f"Expect {kind} name.")
+        self.expect(TT.LEFT_PAREN, after=f"{kind} name.")
 
         params = []
         if not self.try_take(TT.RIGHT_PAREN):
-            params.append(self.take("Expect parameter name.", TT.IDENTIFIER))
+            params.append(self.take(TT.IDENTIFIER, "Expect parameter name."))
             while self.try_take(TT.COMMA):
-                params.append(self.take("Expect parameter name.", TT.IDENTIFIER))
-            self.take("Expect ')' after parameters.", TT.RIGHT_PAREN)
+                params.append(self.take(TT.IDENTIFIER, "Expect parameter name."))
+            self.expect(TT.RIGHT_PAREN, after="parameters.")
 
-        self.take(f"Expect '{{' before {kind} body.", TT.LEFT_BRACE)
+        self.take(TT.LEFT_BRACE, f"Expect '{{' before {kind} body.")
         return Function(name, params, self.block())
 
     def var_declaration(self):
-        name = self.take("Expect variable name.", TT.IDENTIFIER)
-        with self.followed_by(TT.SEMICOLON, "variable declaration."):
+        name = self.take(TT.IDENTIFIER, "Expect variable name.")
+        with self.followed_by(TT.SEMICOLON, after="variable declaration."):
             if self.try_take(TT.EQUAL):
                 return Var(name, self.expression())
             return Var(name, None)
@@ -134,13 +137,13 @@ block          → "{" declaration* "}" ;
             return self.for_statement()
 
         if self.try_take(TT.PRINT):
-            with self.followed_by(TT.SEMICOLON, "value."):
+            with self.followed_by(TT.SEMICOLON, after="value."):
                 return Print(self.expression())
 
         if self.try_take(TT.IF):
-            self.take("Expect '(' after 'if'.", TT.LEFT_PAREN)
+            self.expect(TT.LEFT_PAREN, after="'if'.")
             condition = self.expression()
-            self.take("Expect ')' after condition.", TT.RIGHT_PAREN)
+            self.expect(TT.RIGHT_PAREN, after="condition.")
             then_branch = self.statement()
             else_branch = None
             if self.try_take(TT.ELSE):
@@ -150,13 +153,13 @@ block          → "{" declaration* "}" ;
         if ret := self.try_take(TT.RETURN):
             if self.try_take(TT.SEMICOLON):
                 return Return(ret, None)
-            with self.followed_by(TT.SEMICOLON, "return value."):
+            with self.followed_by(TT.SEMICOLON, after="return value."):
                 return Return(ret, self.expression())
 
         if self.try_take(TT.WHILE):
-            self.take("Expect '(' after 'while'.", TT.LEFT_PAREN)
+            self.expect(TT.LEFT_PAREN, after="'while'.")
             condition = self.expression()
-            self.take("Expect ')' after condition.", TT.RIGHT_PAREN)
+            self.expect(TT.RIGHT_PAREN, after="condition.")
             body = self.statement()
             return While(condition, body)
 
@@ -165,11 +168,11 @@ block          → "{" declaration* "}" ;
         return self.expression_statement()
 
     def expression_statement(self):
-        with self.followed_by(TT.SEMICOLON, "expression."):
+        with self.followed_by(TT.SEMICOLON, after="expression."):
             return Expression(self.expression())
 
     def for_statement(self):
-        self.take("Expect '(' after 'for'.", TT.LEFT_PAREN)
+        self.expect(TT.LEFT_PAREN, after="'for'.")
 
         initializer = None
         if self.try_take(TT.SEMICOLON):
@@ -183,13 +186,13 @@ block          → "{" declaration* "}" ;
             condition = None
         else:
             condition = self.expression()
-            self.take("Expect ';' after loop condition.", TT.SEMICOLON)
+            self.expect(TT.SEMICOLON, after="loop condition.")
 
         if self.try_take(TT.RIGHT_PAREN):
             increment = None
         else:
             increment = self.expression()
-            self.take("Expect ')' after for clauses.", TT.RIGHT_PAREN)
+            self.expect(TT.RIGHT_PAREN, after="for clauses.")
 
         body = self.statement()
 
@@ -296,7 +299,7 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
             if len(args) >= 255:
                 self.error(self.peek(), "Can't have more than 255 arguments.")
             args.append(self.expression())
-        p = self.take("Expect ')' after arguments.", TT.RIGHT_PAREN)
+        p = self.expect(TT.RIGHT_PAREN, after="arguments.")
         return Call(callee, p, args)
 
     def primary(self):
@@ -307,7 +310,7 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
             return Literal(e.type == TT.TRUE)
 
         if e := self.try_take(TT.LEFT_PAREN):
-            with self.followed_by(TT.RIGHT_PAREN, "expression"):
+            with self.followed_by(TT.RIGHT_PAREN, after="expression"):
                 return Grouping(self.expression())
 
         if e := self.try_take(TT.IDENTIFIER):
