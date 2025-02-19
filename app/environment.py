@@ -3,7 +3,7 @@ from app.scanner import Token
 
 
 class Environment:
-    def __init__(self, parent: 'Environment' = None):
+    def __init__(self, parent: "Environment" = None):
         self.values: dict[str, object] = {}
         self.parent: Environment | None = parent
 

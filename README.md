@@ -87,6 +87,7 @@ GetWindowThreadProcessId.restype = ctypes.wintypes.UINT
 
 ### Test cases from the codecrafters course definition
 *See branch https://github.com/darthwalsh/codecrafters-interpreter-python/tree/wip-test-codecrafters-course*
+- [-] Parse the course definition locally, and make script to run the input/output test cases?? ❌ 2025-02-17
 
 Running all test cases can be kind of slow. Compare running a trivial program from 
 * E2E tests that `imports main`; 50 microseconds
@@ -107,3 +108,4 @@ Instead of invoking their test runner which takes an entire second per test case
 
 Other sources for test cases:
 - figure out how to use https://github.com/codecrafters-io/interpreter-tester repo (not OSS) for testing: it has [this template](https://github.com/codecrafters-io/interpreter-tester/blob/2d0a2ab76a8524481af1442ab0f05e7383bca876/test_programs/c4/2.lox) or [this ANSI output](https://github.com/codecrafters-io/interpreter-tester/blob/2d0a2ab76a8524481af1442ab0f05e7383bca876/test_programs/c4/2.lox), which also has a [golang Lox golden implementation](https://github.com/codecrafters-io/interpreter-tester/blob/2d0a2ab76a8524481af1442ab0f05e7383bca876/internal/lox/parser.go)...
+- https://github.com/codecrafters-io/course-sdk might be useful for running a course locally

@@ -52,8 +52,8 @@ class TestInterpreter(unittest.TestCase):
         self.validate("nil", "nil")
 
     def test_call(self):
-        self.validate_single_error_expr('1()')
-        self.validate_single_error_expr('clock(1)')
+        self.validate_single_error_expr("1()")
+        self.validate_single_error_expr("clock(1)")
 
     def test_grouping(self):
         self.validate("(1)", "1")

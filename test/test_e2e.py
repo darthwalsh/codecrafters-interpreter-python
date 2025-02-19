@@ -25,7 +25,6 @@ class TestE2E(unittest.TestCase):
                             actual_code = 1
                         case _:
                             actual_code = e.code
-                    
 
         self.assertEqual(actual_code, code)
         self.assertEqual(f1.getvalue().strip(), out.strip())

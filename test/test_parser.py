@@ -55,7 +55,7 @@ class TestParser(unittest.TestCase):
         self.validate("a()", "a()")
         self.validate('"abc"(x)(y,z)', "abc(x)(y, z)")
 
-        big = f"a({"x, " * 255}1.0)"
+        big = f"a({'x, ' * 255}1.0)"
         self.error(big, "Can't have more than 255 arguments.", big)
 
     def test_expression(self):
@@ -107,7 +107,7 @@ class TestParser(unittest.TestCase):
 
     def test_print(self):
         self.validate("print 1;", "print 1.0;")
-        
+
         self.error("print 1; 3", "Expect ';' after expression.", "print 1.0;")
         self.error("print; 3;", "Expect expression", "3.0;")
 

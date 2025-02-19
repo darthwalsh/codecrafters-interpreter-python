@@ -55,7 +55,9 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
                     print(stringify(o), file=self.file)
             except ReturnUnwind as e:
                 # TODO in chapter 11 change this from runtime to compile error
-                raise LoxRuntimeError(e.token, f"Tried to return '{stringify(e.value)}' outside function.") from e
+                raise LoxRuntimeError(
+                    e.token, f"Tried to return '{stringify(e.value)}' outside function."
+                ) from e
         except LoxRuntimeError as e:
             self.runtime_error(e)
 
