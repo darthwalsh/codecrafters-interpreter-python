@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from contextlib import contextmanager
 
+from app import bnf_lib
 from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable
 from app.scanner import Token, char_tokens
 from app.scanner import TokenType as TT
@@ -11,7 +12,7 @@ class ParseError(Exception):
     pass
 
 
-class Parser:
+class OldParser: # TODO(cleanup)
     def __init__(self, tokens: list[Token], report: Callable[[int, str, str], None]):
         self.tokens = tokens
         self.current = 0
@@ -67,39 +68,6 @@ class Parser:
         yield
         self.take(t, f"Expect '{Parser.token_type_2_char[t]}' after {after}")
 
-    """
-        https://craftinginterpreters.com/appendix-i.html
-
-        Statement Grammar
-
-program        → declaration* EOF ;
-declaration    → funDecl
-               | varDecl
-               | statement ;
-
-funDecl        → "fun" function ;
-function       → IDENTIFIER "(" parameters? ")" block ;
-parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
-
-varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
-statement      → exprStmt
-               | forStmt
-               | ifStmt
-               | printStmt
-               | returnStmt
-               | whileStmt
-               | block ;
-exprStmt       → expression ";" ;
-forStmt        → "for" "(" ( varDecl | exprStmt | ";" )
-                 expression? ";"
-                 expression? ")" statement ;
-ifStmt         → "if" "(" expression ")" statement
-               ( "else" statement )? ;
-printStmt      → "print" expression ";" ;
-returnStmt     → "return" expression? ";" ;
-whileStmt      → "while" "(" expression ")" statement ;
-block          → "{" declaration* "}" ;
-    """
 
     def declaration(self) -> Stmt | None:
         try:
@@ -220,25 +188,6 @@ block          → "{" declaration* "}" ;
                 statements.append(st)
         return statements
 
-    """
-        Expression Grammar
-
-expression     → assignment ;
-assignment     → IDENTIFIER "=" assignment
-               | logic_or ;
-logic_or       → logic_and ( "or" logic_and )* ;
-logic_and      → equality ( "and" equality )* ;
-equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-term           → factor ( ( "-" | "+" ) factor )* ;
-factor         → unary ( ( "/" | "*" ) unary )* ;
-unary          → ( "!" | "-" ) unary | call ;
-call           → primary ( "(" arguments? ")" )* ;
-arguments      → expression ( "," expression )* ;
-primary        → NUMBER | STRING | "true" | "false" | "nil"
-               | "(" expression ")"
-               | IDENTIFIER ;
-    """
 
     def expression(self) -> Expr:
         return self.assignment()
@@ -334,3 +283,21 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
 
         self.report(token.line, f" at {lexeme}", message)
         return ParseError()
+
+
+class Parser:
+    def __init__(self, source, report):
+        # https://craftinginterpreters.com/appendix-i.html
+        self.lib = bnf_lib.Lib(show_parse=False)
+        # self.lib = bnf_lib.Lib(show_parse=True)
+        self.current = 0
+        self.report = report
+        self.source = source
+
+    def parse_expr(self):
+        # got = self.lib.parse(self.source, ("rule", "expression"))
+        got = self.lib.parse(self.source, ("rule", "unary"))
+        from pprint import pprint
+        pprint(got, indent=1)
+        # print(got)
+        return got

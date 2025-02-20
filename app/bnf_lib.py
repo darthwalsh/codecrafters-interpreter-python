@@ -117,6 +117,8 @@ class Bnf:
         elif name := self.try_take(Bnf.ident_reg):
             match = re.match(Bnf.ident_reg, name)
             name, args = match.groups()
+            if args:
+                raise NotImplementedError("TODO Lox Grammar doesn't need args")
             if "(" in name:
                 raise ValueError(name)
 
@@ -192,11 +194,11 @@ def str_concat(head, tail):
 
 def split_defs(bnf_text):
     lines = bnf_text.split("\n")
-    def_lines = [i for i, line in enumerate(lines) if "::=" in line] + [len(lines)]
+    def_lines = [i for i, line in enumerate(lines) if "→" in line] + [len(lines)]
 
     for b, e in zip(def_lines, def_lines[1:]):
         def_str = "\n".join(lines[b:e]).strip()
-        name, text = (s.strip() for s in def_str.split("::="))
+        name, text = (s.strip() for s in def_str.split("→"))
         yield name, text
 
 
@@ -259,18 +261,17 @@ class Lib:
             productions = f.read()
 
         for name, text in split_defs(productions):
-            _, name, *params = Bnf(name).expr
             try:
-                rule = Bnf(text)
+                rule = Bnf(text.strip(";"))
             except Exception as e:
                 raise type(e)(f"{name}: {e!s}").with_traceback(sys.exc_info()[2])
-            self.bnf.setdefault(name, []).append((params, rule.expr))
+            self.bnf.setdefault(name, []).append(rule.expr)
 
     def parse(self, text, expr):
         self.text = text
 
         results = set()
-        for result, lastI in self.resolve(0, expr, {}):
+        for result, lastI in self.resolve(0, expr):
             if lastI == len(text):
                 results.add(result)
 
@@ -296,7 +297,7 @@ class Lib:
                 frame[param] = arg
         return frame
 
-    def resolve(self, i: int, expr: any, frame: dict[str, str]) -> Iterator[tuple[object, int]]:
+    def resolve(self, i: int, expr) -> Iterator[tuple[object, int]]:
         match expr:
             case str(s):
                 if i < len(self.text) and self.text[i] == s:
@@ -306,44 +307,36 @@ class Lib:
                     yield self.text[i], i + 1
             case set() | frozenset():
                 for e in expr:
-                    yield from self.resolve(i, e, frame)
+                    yield from self.resolve(i, e)
             case ("concat",):
                 yield None, i
             case ("concat", e, *exprs):
-                for vv, ii in self.resolve(i, e, frame):
-                    for vvv, iii in self.resolve(ii, ("concat", *exprs), frame):
+                for vv, ii in self.resolve(i, e):
+                    for vvv, iii in self.resolve(ii, ("concat", *exprs)):
                         yield str_concat(vv, vvv), iii
             case ("repeat", lo, hi, e):
                 if not lo:
                     yield None, i
                 if hi:
                     dec = ("repeat", max(lo - 1, 0), hi - 1, e)
-                    for vv, ii in self.resolve(i, e, frame):
-                        for vvv, iii in self.resolve(ii, dec, frame):
+                    for vv, ii in self.resolve(i, e):
+                        for vvv, iii in self.resolve(ii, dec):
                             yield str_concat(vv, vvv), iii
-            case ("rule", name, *args):
-                for params, expr in self.bnf[name]:
-                    if len(params) != len(args):
-                        raise ValueError("arity mismatch")
+            case ("rule", name):
+                for expr in self.bnf[name]:
+                    rec = self.resolve(i, expr)
 
-                    new_frame = self.new_frame(params, args, frame)
-                    if new_frame is None:
-                        continue
-
-                    for bound_frame in automagically_define_unbound(expr, new_frame):
-                        rec = self.resolve(i, expr, bound_frame)
-
-                        if self.show_parse:
-                            for e, ii in rec:
-                                yield ParseResult(name, i, ii, e), ii
-                        else:
+                    if self.show_parse:
+                        for e, ii in rec:
+                            yield ParseResult(name, i, ii, e), ii
+                    else:
                             yield from rec
             case ("diff", e, *subtrahends):
                 for s in subtrahends:
-                    for o in self.resolve(i, s, frame):
+                    for o in self.resolve(i, s):
                         return
-                if not any(any(self.resolve(i, s, frame)) for s in subtrahends):
-                    yield from self.resolve(i, e, frame)
+                if not any(any(self.resolve(i, s)) for s in subtrahends):
+                    yield from self.resolve(i, e)
             case ("^",):
                 if i == 0 or self.text[i - 1] == "\n":
                     yield "", i

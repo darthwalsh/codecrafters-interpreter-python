@@ -62,17 +62,18 @@ def header(stage):
 
 
 def main(source):
-    scanner = Scanner(source, report)
-    tokens = scanner.scan_tokens()
+    # scanner = Scanner(source, report)
+    # tokens = scanner.scan_tokens()
 
-    with step("tokenize") as out:
-        for token in tokens:
-            print(token, file=out)
+    # with step("tokenize") as out:
+    #     for token in tokens:
+    #         print(token, file=out) # TODO traverse the parse tree and emit tokens?
 
-    parser = Parser(tokens, report)
+    parser = Parser(source, report)
 
     if command in ("parse", "evaluate"):
         expr = parser.parse_expr()
+        sys.exit() # "TODO transform parse tree vs. AST"
         with step("parse") as out:
             if expr:
                 print(AstPrinter().view(expr), file=out)

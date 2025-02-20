@@ -43,7 +43,7 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
                | IDENTIFIER ;
 
 NUMBER         → DIGIT+ ( "." DIGIT+ )? ;
-STRING         → "\"" <any char except "\"">* "\"" ;
+STRING         → '"' ([x000000-x10FFFF] - '"')* '"' ;
 IDENTIFIER     → ALPHA ( ALPHA | DIGIT )* ;
-ALPHA          → "a" ... "z" | "A" ... "Z" | "_" ;
-DIGIT          → "0" ... "9" ;
+ALPHA          → [x61-x7A] | [x41-x5A] | "_" ;
+DIGIT          → [x30-x39] ;
