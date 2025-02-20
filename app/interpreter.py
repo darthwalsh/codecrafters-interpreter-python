@@ -36,7 +36,7 @@ def clock():
 
 
 class Interpreter(Visitor[object], StmtVisitor[None]):
-    def __init__(self, runtime_error: Callable, file=sys.stdout):
+    def __init__(self, runtime_error: Callable[[LoxRuntimeError], None], file=sys.stdout):
         self.global_env = Environment()
         self.environment = self.global_env
 
@@ -88,6 +88,8 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
                 if isinstance(left, float) and isinstance(right, float):
                     return left + right
                 raise LoxRuntimeError(binary.operator, "Operands must be two numbers or two strings.")
+            case _:
+                pass
 
         if not isinstance(left, float) or not isinstance(right, float):
             raise LoxRuntimeError(binary.operator, "Operands must be numbers.")

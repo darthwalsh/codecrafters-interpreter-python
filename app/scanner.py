@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import IntEnum, auto
-from typing import overload
+from typing import Any, overload
 
 
 # https://craftinginterpreters.com/scanning.html#token-type
@@ -94,7 +94,7 @@ class Token:
 class Scanner:
     """Lexes tokens"""
 
-    def __init__(self, source: str, report: Callable):
+    def __init__(self, source: str, report: Callable[[int, str, str], None]):
         """Take report() with DI to avoid circular import"""
         self.source = source
         self.start = 0
@@ -138,11 +138,11 @@ class Scanner:
             self.pop()
             return v
 
-    def take_many(self, m: str | Callable):
+    def take_many(self, m: str | Callable[[str], Any]):
         while self.take(m):
             pass
 
-    def skip_until(self, m: str | Callable):
+    def skip_until(self, m: str | Callable[[str], Any]):
         """Skips as many as needed until m is taken"""
         while not self.take(m):
             if not self.pop():

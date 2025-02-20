@@ -6,6 +6,15 @@ requires-python = ">= 3.12"
 [tool.coverage.report]
 exclude_also = ["@abstractmethod"]
 
+[tool.pyright]
+# Use strict mode, but disable rules about Unknown types coming from functions with no type hints
+typeCheckingMode = "strict"
+reportMissingParameterType = false
+reportUnknownArgumentType = false
+reportUnknownMemberType = false
+reportUnknownParameterType = false
+reportUnknownVariableType = false
+
 [tool.ruff]
 line-length = 110
 

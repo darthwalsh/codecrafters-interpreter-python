@@ -2,7 +2,7 @@ import inspect
 from collections.abc import Callable
 
 
-def shim(f: Callable, name: str, params: list[str]):
+def shim(f: Callable[..., object], name: str, params: list[str]):
     f.__name__ = name
 
     # HACK this is CPython implementation detail: https://stackoverflow.com/a/56356583/771768

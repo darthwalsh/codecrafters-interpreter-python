@@ -12,7 +12,7 @@ class ParseError(Exception):
 
 
 class Parser:
-    def __init__(self, tokens: list[Token], report: Callable):
+    def __init__(self, tokens: list[Token], report: Callable[[int, str, str], None]):
         self.tokens = tokens
         self.current = 0
         self.report = report
