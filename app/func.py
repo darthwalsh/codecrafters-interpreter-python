@@ -1,30 +1,20 @@
-from dataclasses import dataclass
-
-from app.environment import Environment
-from app.runtime import ReturnUnwind
-from app.statement import Function
+import inspect
+from collections.abc import Callable
 
 
-@dataclass
-class LoxFunction:  # MAYBE some ABC that clock implements? OR remove entirely and replace callsite with native function
-    decl: Function
-    closure: Environment
+def shim(f: Callable, name: str, params: list[str]):
+    f.__name__ = name
 
-    @property
-    def arity(self):
-        return len(self.decl.params)
+    # HACK this is CPython implementation detail: https://stackoverflow.com/a/56356583/771768
+    f.__signature__ = build_signature(params)  # pyright: ignore [reportFunctionMemberAccess]
+    # Don't use __text_signature__ because then python has to parse it
 
-    @property
-    def __name__(self):
-        return self.decl.name.lexeme
 
-    def __call__(self, intr, args: list[object]):
-        # MAYBE figure out circular type hint on intr: Interpreter i.e. https://stackoverflow.com/a/69049426/771768
-        env = Environment(self.closure)
-        for a, p in zip(args, self.decl.params, strict=True):
-            env[p.lexeme] = a
+def build_signature(names: list[str]):
+    kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
+    return inspect.Signature([inspect.Parameter(name, kind) for name in names])
 
-        try:
-            intr.execute_block(self.decl.body, env)
-        except ReturnUnwind as e:
-            return e.value
+
+def arity(f):
+    sig = inspect.signature(f)
+    return len(sig.parameters)

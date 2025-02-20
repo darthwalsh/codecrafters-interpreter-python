@@ -25,8 +25,8 @@ In this challenge you'll build an interpreter for [Lox](https://craftinginterpre
 ## Things I'm proud of
 - Pretty decent unit tests for scanner, parser, interpreter, and main modules
 - `AstPrinter` can print debug versions of all syntax, helps with dangling-else test
-- `LoxFunction` models a Lox function as a normal python function
-	- [ ] Should be possible to remove entirely, but want to check ahead in the book first...
+- `func` models a Lox function as a normal python function
+	- [ ] Removed LoxFunction entirely, hopefully that doesn't mess with classes later in the book...
 - `Expr` has pretty minimal boilerplate, didn't need to write a source code generator!
 	- Creating e.g. `Assign` record class makes great use of `dataclass`
 	- Instead of repeated static definitions:
@@ -52,7 +52,6 @@ In this challenge you'll build an interpreter for [Lox](https://craftinginterpre
 ## Bugs
 - [ ] Have yet to implement [Chapter 11](https://craftinginterpreters.com/resolving-and-binding.html) onwards
 - [ ] main script errors out if there are compiler/runtime 9000 errors.
-- [ ] Couple type errors for `.arity`
 ## Extra ideas
 - Use my [JustAnotherYamlParser](https://github.com/darthwalsh/JustAnotherYamlParser) BNF evaluator
 	- I think it would produce the exact [Parse Tree](https://craftinginterpreters.com/representing-code.html#implementing-syntax-trees) so we would need a light tree-transform into a workaround AST

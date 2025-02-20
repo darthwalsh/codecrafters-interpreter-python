@@ -4,9 +4,9 @@ from collections.abc import Callable
 from time import time
 from typing import override
 
+from app import func
 from app.environment import Environment
 from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable, Visitor
-from app.func import LoxFunction
 from app.runtime import LoxRuntimeError, ReturnUnwind
 from app.scanner import TokenType as TT
 from app.statement import Block, Expression, Function, If, Print, Return, Stmt, StmtVisitor, Var, While
@@ -31,19 +31,19 @@ def truthy(o: object):
     return o not in (False, None)
 
 
+def clock():
+    return time()
+
+
 class Interpreter(Visitor[object], StmtVisitor[None]):
     def __init__(self, runtime_error: Callable, file=sys.stdout):
         self.global_env = Environment()
         self.environment = self.global_env
 
-        def clock(_intr: Interpreter, _args: list[object]):
-            return time()
-
-        clock.arity = 0  # MAYBE use LoxCallable ABC from LoxFunction?
         self.global_env["clock"] = clock
 
         self.runtime_error = runtime_error
-        self.file = file  # Maybe instead of taking in the IO object, it should take a regular callback?
+        self.file = file  # MAYBE instead of taking in the IO object, it should take a regular callback?
 
     def interpret(self, e: Expr | list[Stmt]):
         try:
@@ -123,10 +123,11 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
         if not callable(callee):
             raise LoxRuntimeError(call.paren, "Can only call functions and classes.")
-        if len(args) != callee.arity:
-            raise LoxRuntimeError(call.paren, f"Expected {callee.arity} arguments but got {len(args)}.")
+        callee_arity = func.arity(callee)
+        if len(args) != callee_arity:
+            raise LoxRuntimeError(call.paren, f"Expected {callee_arity} arguments but got {len(args)}.")
 
-        return callee(self, args)
+        return callee(*args)
 
     @override
     def visit_grouping(self, grouping: Grouping):
@@ -185,7 +186,21 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     @override
     def visit_function(self, f: Function):
-        self.environment[f.name.lexeme] = LoxFunction(f, self.environment)
+        closure = self.environment
+
+        def fun(*args: object) -> object:
+            env = Environment(closure)
+            for a, p in zip(args, f.params):
+                env[p.lexeme] = a
+
+            try:
+                self.execute_block(f.body, env)
+            except ReturnUnwind as ret:
+                return ret.value
+
+        func.shim(fun, f.name.lexeme, [p.lexeme for p in f.params])
+
+        self.environment[f.name.lexeme] = fun
 
     @override
     def visit_if(self, i: If):
