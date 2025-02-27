@@ -1,9 +1,9 @@
 from collections.abc import Callable
 from contextlib import contextmanager
 
-from app import bnf_lib
+from app.bnf_lib import Lib, ParseResult
 from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable
-from app.scanner import Token, char_tokens
+from app.scanner import Token, char_equal_tokens, char_tokens, keywords
 from app.scanner import TokenType as TT
 from app.statement import Block, Expression, Function, If, Print, Return, Stmt, Var, While
 
@@ -59,14 +59,14 @@ class OldParser: # TODO(cleanup)
         raise self.error(self.peek(), message)
 
     def expect(self, t: TT, *, after: str):
-        return self.take(t, f"Expect '{Parser.token_type_2_char[t]}' after {after}")
+        return self.take(t, f"Expect '{OldParser.token_type_2_char[t]}' after {after}")
 
     token_type_2_char = {v: k for k, v in char_tokens.items()}
 
     @contextmanager
     def followed_by(self, t: TT, *, after: str):
         yield
-        self.take(t, f"Expect '{Parser.token_type_2_char[t]}' after {after}")
+        self.take(t, f"Expect '{OldParser.token_type_2_char[t]}' after {after}")
 
 
     def declaration(self) -> Stmt | None:
@@ -285,19 +285,88 @@ class OldParser: # TODO(cleanup)
         return ParseError()
 
 
+class NotConvertible(Exception):
+    pass
+
+
+all_tokens = char_tokens | char_equal_tokens
+def fake_token(c: str):
+    return Token(all_tokens[c], c, -99, None)
+
+
+def convert_stmt(tree) -> Stmt:
+    raise NotImplementedError
+
+
+def convert_expr(tree) -> Expr:
+    match tree:
+        case ParseResult("unary", _s, _e, (op, e)):
+            return Unary(fake_token(op), convert_expr(e))
+        
+        case ParseResult("call", _s, _e, (callee, *invokes)):
+            raise NotImplementedError("TODO the parse tree is wrong -- should NOT be flattening this part of the tree ")
+            e = convert_expr(callee)
+            for _l, *args, _r in invokes:
+                e = Call(e, fake_token(")"), [convert_expr(a) for a in args])
+            return e
+        
+        case ParseResult("primary", _s, _e, "true"):
+            return Literal(True)
+        case ParseResult("primary", _s, _e, "false"):
+            return Literal(False)
+        case ParseResult("primary", _s, _e, "Nil"):
+            return Literal(None)
+        case ParseResult("primary", _s, _e, ("(", e, ")")):
+            return Grouping(convert_expr(e))
+        
+        case ParseResult("NUMBER", _s, _e, e):
+            if not isinstance(e, str):
+                raise ValueError(e)
+            return Literal(float(e))
+        case ParseResult("STRING", _s, _e, e):
+            if not isinstance(e, str):
+                raise ValueError(e)
+            return Literal(e.strip('"'))
+        case ParseResult("IDENTIFIER", _s, _e, e):
+            if e in keywords:
+                raise NotConvertible("KeywordError")
+            if not isinstance(e, str):
+                raise ValueError(e)
+            return Variable(Token(TT.IDENTIFIER, e, -99, None))
+        case ParseResult(rule, _s, _e, e):
+            raise NotImplementedError(rule, e)
+        case set():
+            possible = []
+            for e in tree:
+                try:
+                    possible.append(convert_expr(e))
+                except NotConvertible:
+                    pass
+            if len(possible) == 1:
+                return possible[0]
+            raise RuntimeError("Ambiguous conversion", tree, "->", *possible)
+        case _:
+            raise NotImplementedError(type(tree), tree)
+
+
+# TODO whitespace
+# TODO comments
+
+# TODO EOF diff in productions.bnf (also see prev git history!)
 class Parser:
-    def __init__(self, source, report):
+    def __init__(self, source: str, report: Callable[[int, str, str], None]):
         # https://craftinginterpreters.com/appendix-i.html
-        self.lib = bnf_lib.Lib(show_parse=False)
-        # self.lib = bnf_lib.Lib(show_parse=True)
+        self.lib = Lib()
         self.current = 0
         self.report = report
         self.source = source
 
     def parse_expr(self):
-        # got = self.lib.parse(self.source, ("rule", "expression"))
-        got = self.lib.parse(self.source, ("rule", "unary"))
-        from pprint import pprint
-        pprint(got, indent=1)
-        # print(got)
-        return got
+        got = self.lib.parse(self.source, ("rule", "expression"))
+        print(got)
+        return convert_expr(got)
+    
+    def parse_stmt(self):
+        got = self.lib.parse(self.source, ("rule", "program"))
+        print(got)
+        return convert_stmt(got)

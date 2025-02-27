@@ -181,15 +181,27 @@ class Bnf:
 
 
 def str_concat(head, tail):
-    if isinstance(head, str) and isinstance(tail, str):
-        return head + tail
+    # if isinstance(head, str) and isinstance(tail, str):
+    #     return head + tail
     if tail is None:
         return head
-    try:
-        comb = (head, *tail)
-    except Exception:
-        return (head, tail)
+    if isinstance(tail, tuple):
+        return (head, *tail)
+    # try:
+    #     comb = (head, *tail)
+    # except Exception:
+    return (head, tail)
     return solo(comb)
+
+def deep_concat(vals):
+    if isinstance(vals, str):
+        return vals
+    if isinstance(vals, tuple):
+        return ''.join(deep_concat(val) for val in vals)
+    if isinstance(vals, ParseResult):
+        return deep_concat(vals.expr)
+    raise ValueError(vals)
+    return ''.join(deep_concat(*val) if isinstance(val, tuple) else val for val in vals)
 
 
 def split_defs(bnf_text):
@@ -204,10 +216,22 @@ def split_defs(bnf_text):
 
 @dataclass(frozen=True)
 class ParseResult:
-    name: str
+    rule: str
     start: int
     end: int
     expr: object
+
+    def __str__(self):
+        if self.rule.isupper():
+            if isinstance(self.expr, str):
+                return self.expr
+            raise ValueError(self.expr)
+
+        if isinstance(self.expr, tuple):
+            expr = ', '.join(map(str, self.expr))
+        else:
+            expr = str(self.expr)
+        return f"{self.rule}({expr})"
 
 
 def find_vars(expr):
@@ -250,10 +274,9 @@ def automagically_define_unbound(expr: any, frame: dict[str, str]):
 
 
 class Lib:
-    def __init__(self, *, show_parse=False):
+    def __init__(self):
         self.bnf = {}
         self.load_defs()
-        self.show_parse = show_parse
 
     def load_defs(self):
         productions_path = (Path(__file__).parent / "productions.bnf").resolve()
@@ -267,7 +290,7 @@ class Lib:
                 raise type(e)(f"{name}: {e!s}").with_traceback(sys.exc_info()[2])
             self.bnf.setdefault(name, []).append(rule.expr)
 
-    def parse(self, text, expr):
+    def parse(self, text: str, expr):
         self.text = text
 
         results = set()
@@ -296,12 +319,23 @@ class Lib:
                     raise NotImplementedError(param)
                 frame[param] = arg
         return frame
+    
+    def ignore_whitespace(self, i: int) -> int:
+        if i + 1 < len(self.text) and self.text[i : i + 2] == "//":
+            try:
+                return self.ignore_whitespace(1 + self.text.index("\n", i))
+            except ValueError:
+                return len(self.text)
+        if i < len(self.text) and self.text[i].isspace():
+            return self.ignore_whitespace(i + 1)
+        return i
 
-    def resolve(self, i: int, expr) -> Iterator[tuple[object, int]]:
+    def resolve(self, i: int, expr) -> Iterator[tuple[object, int]]:  # TODO Iterator[ParseResult]? Or should it be less lazy and return list[ParseResult]?
         match expr:
             case str(s):
-                if i < len(self.text) and self.text[i] == s:
-                    yield s, i + 1
+                # TODO handle whitespace i = self.ignore_whitespace(i)
+                if i < len(self.text) and self.text[i:i+len(s)] == s:
+                    yield s, i + len(s)
             case range():
                 if i < len(self.text) and ord(self.text[i]) in expr:
                     yield self.text[i], i + 1
@@ -324,18 +358,18 @@ class Lib:
                             yield str_concat(vv, vvv), iii
             case ("rule", name):
                 for expr in self.bnf[name]:
-                    rec = self.resolve(i, expr)
-
-                    if self.show_parse:
-                        for e, ii in rec:
+                    for e, ii in self.resolve(i, expr):
+                        if name.isupper():  # TODO document rule: UPPERCASE just takes substring, and skips the whitespace and //comment rule
+                            yield ParseResult(name, i, ii, self.text[i : ii]), ii
+                        elif isinstance(e, ParseResult):
+                            yield e, ii
+                        else:
                             yield ParseResult(name, i, ii, e), ii
-                    else:
-                            yield from rec
             case ("diff", e, *subtrahends):
                 for s in subtrahends:
                     for o in self.resolve(i, s):
                         return
-                if not any(any(self.resolve(i, s)) for s in subtrahends):
+                if not any(any(self.resolve(i, s)) for s in subtrahends): # TODO this duplicates above??
                     yield from self.resolve(i, e)
             case ("^",):
                 if i == 0 or self.text[i - 1] == "\n":

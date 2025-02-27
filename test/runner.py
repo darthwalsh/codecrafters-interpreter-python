@@ -11,10 +11,10 @@ def reraise(e, *other):
 def parse_for_errors(source, reporter):
     """Hacky workaround to parse either. Can produce errors"""
     tokens = Scanner(source, reporter).scan_tokens()
-    parser = Parser(tokens, reporter)
+    parser = Parser(source, reporter)
 
     # Might regret this magic, so don't move this to app/
-    if any(t.type in (TokenType.SEMICOLON, TokenType.LEFT_BRACE) for t in tokens):
+    if any(t.type in (TokenType.SEMICOLON, TokenType.LEFT_BRACE) for t in tokens): # TODO remove?
         return parser.parse_stmt()
     return parser.parse_expr()
 
