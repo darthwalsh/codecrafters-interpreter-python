@@ -1,4 +1,4 @@
-program        → declaration* ;
+program        → declaration* EOF ;
 declaration    → funDecl
                | varDecl
                | statement ;
@@ -43,7 +43,7 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
                | IDENTIFIER ;
 
 NUMBER         → DIGIT+ ( "." DIGIT+ )? ;
-STRING         → '"' ([x000000-x10FFFF] - '"')* '"' ;
+STRING         → '"' <any char except "\"">* '"' ;
 IDENTIFIER     → ALPHA ( ALPHA | DIGIT )* ;
 ALPHA          → [x61-x7A] | [x41-x5A] | "_" ;
 DIGIT          → [x30-x39] ;

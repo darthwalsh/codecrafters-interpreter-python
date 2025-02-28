@@ -26,15 +26,9 @@ class Bnf:
       'c'                  Text character is str "c" (no backslash escaping)
       x30                  Escaped character is str "0"
       [xA0-xD7FF]          Character range is exclusive range(0xA0, 0xD800)
-      l-empty(n,c)         Production is tuple ("rule", "l-empty", "n", "c")
-      - Lookarounds produce regex
-      [ lookahead = 'c' ]  Production is ("?=", "c")
-      [ lookahead ≠ 'c' ]  Production is ("?!", "c")
-      [ lookbehind = 'c' ] Production is ("?<=", "c")
+      term                 Production is tuple ("rule", "term")
       - Special productions also produce regex (different DOTALL)
-      <start-of-line>      Start of line is ("^",)
-      <end-of-input>       End of whole text stream is ("$",)
-      <empty>              Empty string is redundant -- would already be ("concat",)
+      <any char except "\"">
       "a" "b"              Concatenation is tuple ("concat", "a", "b")
       "a" | "b"            Alternation is frozenset({"a", "b"})
       "a"?                 Option is tuple ("repeat", 0, 1, "a")
@@ -42,6 +36,9 @@ class Bnf:
       "a"+                 Repeat is tuple ("repeat", 1, inf, "a")
       "a"{4}               Repeat is tuple ("repeat", 4, 4, "a")
       dig - "0" - "1"      Difference is tuple ("diff", ("rule", "dig"), "0", "1")
+
+      # EOF                End of whole text stream is ("$",)
+      # UPPERCASE rule names just takes substring, and skips over whitespace and //comment rule
     """
 
     def __init__(self, text: str):
@@ -128,8 +125,8 @@ class Bnf:
             return "rule", name, *args
         elif self.try_take(r"\[ look"):
             return self.parseLookaround()
-        elif self.try_take("<"):
-            return self.parseSpecial()
+        elif self.try_take(r'<any char except "\\"">'):
+            return ("diff", range(0, 0x10FFFF), '"')
         elif self.try_take(r"\("):
             parens = self.parse()
             self.take(r"\)")
@@ -150,15 +147,6 @@ class Bnf:
         e = self.parseSingle()
         self.take("]")
         return ("?<=", e)
-
-    def parseSpecial(self):
-        if self.try_take("start-of-line>"):
-            return ("^",)
-        if self.try_take("end-of-input>"):
-            return ("$",)
-
-        self.take("empty>")
-        return ("concat",)
 
     def parseString(self):
         cs = []
@@ -242,13 +230,14 @@ class Lib:
             except Exception as e:
                 raise type(e)(f"{name}: {e!s}").with_traceback(sys.exc_info()[2])
             self.bnf.setdefault(name, []).append(rule.expr)
+        self.bnf["EOF"] = [("$",)]
 
     def parse(self, text: str, expr):
         self.text = text
 
         results = set()
-        for result, lastI in self.resolve(0, expr):
-            if lastI == len(text):
+        for result, lastI in self.resolve(0, expr, skip_ws=True):
+            if self.ignore_whitespace(lastI) == len(text):
                 results.add(result)
 
         if not results:
@@ -265,10 +254,11 @@ class Lib:
             return self.ignore_whitespace(i + 1)
         return i
 
-    def resolve(self, i: int, expr) -> Iterator[tuple[object, int]]:  # TODO Iterator[ParseResult]? Or should it be less lazy and return list[ParseResult]?
+    def resolve(self, i: int, expr, skip_ws) -> Iterator[tuple[object, int]]:  # TODO Iterator[ParseResult]? Or should it be less lazy and return list[ParseResult]?
+        if skip_ws:
+            i = self.ignore_whitespace(i)
         match expr:
             case str(s):
-                # TODO handle whitespace i = self.ignore_whitespace(i)
                 if i < len(self.text) and self.text[i:i+len(s)] == s:
                     yield s, i + len(s)
             case range():
@@ -276,25 +266,26 @@ class Lib:
                     yield self.text[i], i + 1
             case set() | frozenset():
                 for e in expr:
-                    yield from self.resolve(i, e)
+                    yield from self.resolve(i, e, skip_ws)
             case ("concat",):
                 yield None, i
             case ("concat", e, *exprs):
-                for vv, ii in self.resolve(i, e):
-                    for vvv, iii in self.resolve(ii, ("concat", *exprs)):
+                for vv, ii in self.resolve(i, e, skip_ws):
+                    for vvv, iii in self.resolve(ii, ("concat", *exprs), skip_ws):
                         yield str_concat(vv, vvv), iii
             case ("repeat", lo, hi, e):
                 if not lo:
                     yield None, i
                 if hi:
                     dec = ("repeat", max(lo - 1, 0), hi - 1, e)
-                    for vv, ii in self.resolve(i, e):
-                        for vvv, iii in self.resolve(ii, dec):
+                    for vv, ii in self.resolve(i, e, skip_ws):
+                        for vvv, iii in self.resolve(ii, dec, skip_ws):
                             yield str_concat(vv, vvv), iii
             case ("rule", name):
                 for expr in self.bnf[name]:
-                    for e, ii in self.resolve(i, expr):
-                        if name.isupper():  # TODO document rule: UPPERCASE just takes substring, and skips the whitespace and //comment rule
+                    literal_text = name.isupper()
+                    for e, ii in self.resolve(i, expr, skip_ws=not literal_text):
+                        if literal_text:
                             yield ParseResult(name, i, ii, self.text[i : ii]), ii
                         elif isinstance(e, ParseResult):
                             yield e, ii
@@ -302,13 +293,12 @@ class Lib:
                             yield ParseResult(name, i, ii, e), ii
             case ("diff", e, *subtrahends):
                 for s in subtrahends:
-                    for o in self.resolve(i, s):
+                    for o in self.resolve(i, s, skip_ws):
                         return
-                if not any(any(self.resolve(i, s)) for s in subtrahends): # TODO this duplicates above??
-                    yield from self.resolve(i, e)
-            case ("^",):
-                if i == 0 or self.text[i - 1] == "\n":
-                    yield "", i
+                if not any(
+                    any(self.resolve(i, s, skip_ws)) for s in subtrahends
+                ): # TODO this duplicates above??
+                    yield from self.resolve(i, e, skip_ws)
             case ("$",):
                 if i == len(self.text):
                     yield "", i

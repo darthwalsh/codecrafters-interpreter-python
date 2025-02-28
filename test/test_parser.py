@@ -35,6 +35,8 @@ class TestParser(unittest.TestCase):
         self.validate("x and y", "(AND x y)")
         self.validate("x or y", "(OR x y)")
 
+        # TODO doesn't work self.validate("x and y and y", "(AND (AND x y) y)")
+
         self.validate("x and y or y", "(OR (AND x y) y)")
         self.validate("x or y and z", "(OR x (AND y z))")
 

@@ -52,14 +52,8 @@ class TestBnf(unittest.TestCase):
         self.assertEqual(g.expr, ("?<=", ("rule", "ns-char")))
 
     def test_special(self):
-        g = Bnf("<start-of-line>")
-        self.assertEqual(g.expr, ("^",))
-
-        g = Bnf("<end-of-input>")
-        self.assertEqual(g.expr, ("$",))
-
-        g = Bnf("<empty>")
-        self.assertEqual(g.expr, ("concat",))
+        g = Bnf('<any char except "\\"">')
+        self.assertEqual(g.expr, ("diff", range(0, 0x10FFFF), '"'))
 
     def test_or(self):
         g = Bnf('"0" | "9"')
@@ -122,7 +116,7 @@ class TestBnf(unittest.TestCase):
         self.assertIn("expected", str(e_info.exception))
 
     def test_load(self):
-        self.assertEqual(len(Lib().bnf), 31)
+        self.assertEqual(len(Lib().bnf), 32)
 
 
 library = Lib()
@@ -165,13 +159,30 @@ class TestLib(unittest.TestCase):
     def test_rules(self):
         self.assertEqual(library.parse("x2A", ("rule", "IDENTIFIER")), P("IDENTIFIER", 0, 3, "x2A"))
 
-    def test_start(self):
-        self.assertEqual(
-            library.parse("\n", ("concat", ("^",), "\n", ("^",))), ("", "\n", "")
-        )  # TODO is this right?
+    def test_white_space(self):
+        self.assertEqual(library.parse(" c", "c"), "c")
+        self.assertEqual(library.parse("c ", "c"), "c")
+        self.assertEqual(library.parse("c c", ("concat", "c", "c")), tuple("cc"))
+
+        self.assertEqual(library.parse('"AB"', ("rule", "STRING")), P("STRING", 0, 4, '"AB"'))
+        self.assertEqual(library.parse('" B"', ("rule", "STRING")), P("STRING", 0, 4, '" B"'))
+        self.assertEqual(library.parse('"A "', ("rule", "STRING")), P("STRING", 0, 4, '"A "'))
+
+        self.assertEqual(library.parse("c//COM", "c"), "c")
+        self.assertEqual(library.parse("c //COM\nc", ("concat", "c", "c")), tuple("cc"))
 
     def test_end(self):
-        self.assertEqual(library.parse("a", ("concat", "a", ("$",))), ("a", ""))
+        self.assertEqual(
+            library.parse("a", ("concat", "a", ("rule", "EOF"))),
+            ("a", P(rule="EOF", start=1, end=1, expr="")),
+        )
+
+        with self.assertRaises(ValueError) as e_info:
+            library.parse("a", ("rule", "EOF"))
+        self.assertIn("no results", str(e_info.exception))
+        with self.assertRaises(ValueError) as e_info:
+            library.parse("a", ("concat", ("rule", "EOF"), "a"))
+        self.assertIn("no results", str(e_info.exception))
 
     def test_diff(self):
         diff = ("diff", range(0x20, 0x7F), "0", range(0x35, 0x3A))

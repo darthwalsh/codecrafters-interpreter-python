@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Callable
 from contextlib import contextmanager
 
@@ -289,7 +290,9 @@ class NotConvertible(Exception):
     pass
 
 
-all_tokens = char_tokens | char_equal_tokens
+with_equal = {c + "=": TT(tt + 1) for c, tt in char_equal_tokens.items() }
+all_tokens = char_tokens | char_equal_tokens | with_equal | keywords
+
 def fake_token(c: str):
     return Token(all_tokens[c], c, -99, None)
 
@@ -302,6 +305,10 @@ def convert_expr(tree) -> Expr:
     match tree:
         case ParseResult("unary", _s, _e, (op, e)):
             return Unary(fake_token(op), convert_expr(e))
+        case ParseResult("logic_and" | "logic_or", _s, _e, (left, op, right)):
+            return Logical(convert_expr(left), fake_token(op), convert_expr(right))
+        case ParseResult("equality" | "comparison" | "term" | "factor", _s, _e, (left, op, right)):
+            return Binary(convert_expr(left), fake_token(op), convert_expr(right))
         
         case ParseResult("call", _s, _e, (callee, *invokes)):
             raise NotImplementedError("TODO the parse tree is wrong -- should NOT be flattening this part of the tree ")

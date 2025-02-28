@@ -73,7 +73,6 @@ def main(source):
 
     if command in ("parse", "evaluate"):
         expr = parser.parse_expr()
-        sys.exit() # "TODO transform parse tree vs. AST"
         with step("parse") as out:
             if expr:
                 print(AstPrinter().view(expr), file=out)
