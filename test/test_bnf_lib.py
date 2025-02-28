@@ -2,9 +2,12 @@ import math
 import unittest
 
 from app.bnf_lib import Bnf, Lib
+from app.bnf_lib import ParseResult as P
+
+unittest.util._MAX_LENGTH = 2000  # type: ignore
 
 
-class TestBnfLib(unittest.TestCase):
+class TestBnf(unittest.TestCase):
     def test_char(self):
         g = Bnf('"c"')
         self.assertEqual(g.expr, "c")
@@ -38,19 +41,10 @@ class TestBnfLib(unittest.TestCase):
         self.assertEqual(g.expr, range(0xA0, 0xD800))
 
     def test_rules(self):
-        g = Bnf("s-indent(<n)")
-        self.assertEqual(g.expr, ("rule", "s-indent", "<n"))
-
         g = Bnf("nb-json")
         self.assertEqual(g.expr, ("rule", "nb-json"))
 
-        g = Bnf("s-separate(n,c)")
-        self.assertEqual(g.expr, ("rule", "s-separate", "n", "c"))
-
     def test_lookarounds(self):
-        g = Bnf("[ lookahead = ns-plain-safe(c) ]")
-        self.assertEqual(g.expr, ("?=", ("rule", "ns-plain-safe", "c")))
-
         g = Bnf("[ lookahead ≠ ns-char ]")
         self.assertEqual(g.expr, ("?!", ("rule", "ns-char")))
 
@@ -129,6 +123,103 @@ class TestBnfLib(unittest.TestCase):
 
     def test_load(self):
         self.assertEqual(len(Lib().bnf), 31)
+
+
+library = Lib()
+
+
+class TestLib(unittest.TestCase):
+    def test_single_char(self):
+        self.assertEqual(library.parse("c", "c"), "c")
+
+    def test_str(self):
+        self.assertEqual(library.parse("az", ("concat", "a", "z")), tuple("az"))
+
+    def test_concat(self):
+        self.assertEqual(library.parse("a3z", ("concat", "a", range(0x30, 0x3A), "z")), tuple("a3z"))
+
+    def test_empty(self):
+        self.assertIsNone(library.parse("", ("concat",)))
+
+    def test_range(self):
+        self.assertEqual(library.parse("2", range(0x30, 0x3A)), "2")
+
+    def test_or(self):
+        self.assertEqual(library.parse("0", {"0", "9"}), "0")
+
+    def test_or_repeat(self):
+        self.assertEqual(library.parse("0", {"0", "0"}), "0")
+
+    def test_star(self):
+        self.assertEqual(library.parse("a", ("repeat", 0, math.inf, "a")), "a")
+
+    def test_plus(self):
+        self.assertEqual(library.parse("a", ("repeat", 1, math.inf, "a")), "a")
+
+    def test_plus_not_match(self):
+        self.assertEqual(library.parse("b", {"b", ("repeat", 1, math.inf, "a")}), "b")
+
+    def test_times(self):
+        self.assertEqual(library.parse("aaa", ("repeat", 3, 3, "a")), tuple("aaa"))
+
+    def test_rules(self):
+        self.assertEqual(library.parse("x2A", ("rule", "IDENTIFIER")), P("IDENTIFIER", 0, 3, "x2A"))
+
+    def test_start(self):
+        self.assertEqual(
+            library.parse("\n", ("concat", ("^",), "\n", ("^",))), ("", "\n", "")
+        )  # TODO is this right?
+
+    def test_end(self):
+        self.assertEqual(library.parse("a", ("concat", "a", ("$",))), ("a", ""))
+
+    def test_diff(self):
+        diff = ("diff", range(0x20, 0x7F), "0", range(0x35, 0x3A))
+
+        self.assertEqual(library.parse("1", diff), "1")
+
+        with self.assertRaises(ValueError) as e_info:
+            library.parse("0", diff)
+        self.assertIn("no results", str(e_info.exception))
+
+        with self.assertRaises(ValueError) as e_info:
+            library.parse("5", diff)
+        self.assertIn("no results", str(e_info.exception))
+
+    def test_tree_repeat(self):
+        self.assertEqual(
+            library.parse("ABCD", ("repeat", 4, 4, ("rule", "ALPHA"))),
+            (
+                P("ALPHA", 0, 1, "A"),
+                P("ALPHA", 1, 2, "B"),
+                P("ALPHA", 2, 3, "C"),
+                P("ALPHA", 3, 4, "D"),
+            ),
+        )
+
+    def test_tree_rule(self):
+        self.assertEqual(
+            library.parse("1+2", ("rule", "term")),
+            P(
+                "term",
+                0,
+                3,
+                (P("NUMBER", 0, 1, "1"), "+", P("NUMBER", 2, 3, "2")),
+            ),
+        )
+        self.assertEqual(
+            library.parse("1+2*3", ("rule", "term")),
+            P(
+                "term",
+                0,
+                5,
+                (
+                    P("NUMBER", 0, 1, "1"),
+                    "+",
+                    P("factor", 2, 5, (P("NUMBER", 2, 3, "2"), "*", P("NUMBER", 4, 5, "3"))),
+                ),
+            ),
+        )
 
 
 if __name__ == "__main__":

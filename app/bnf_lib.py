@@ -14,7 +14,7 @@ def solo(items, default=None):
     return default or items
 
 
-# TODO trim this functionality by running `coverage run -m unittest test.test_bnf_lib.TestBnfLib.test_load ; coverage xml` and find unused features.
+# TODO trim this functionality by running `coverage run -m unittest test.test_bnf_lib.TestBnf.test_load ; coverage xml` and find unused features.
 # MAYBE try to get original production.bnf to work, with special i.e. <any char except "\"">
 class Bnf:
     """Automatic parse rule based on bnf rule text
@@ -195,16 +195,6 @@ def str_concat(head, tail):
     return (head, tail)
     return solo(comb)
 
-def deep_concat(vals):
-    if isinstance(vals, str):
-        return vals
-    if isinstance(vals, tuple):
-        return ''.join(deep_concat(val) for val in vals)
-    if isinstance(vals, ParseResult):
-        return deep_concat(vals.expr)
-    raise ValueError(vals)
-    return ''.join(deep_concat(*val) if isinstance(val, tuple) else val for val in vals)
-
 
 def split_defs(bnf_text):
     lines = bnf_text.split("\n")
@@ -236,45 +226,6 @@ class ParseResult:
         return f"{self.rule}({expr})"
 
 
-def find_vars(expr):
-    match expr:
-        case ("rule", _, *args):
-            return set(
-                a for arg in args for a in arg.split("+") if a.isalpha() and a.islower() and len(a) == 1
-            )
-        case (_, *es):
-            return set(v for e in es for v in find_vars(e))
-        case set() | frozenset():
-            return set(v for e in expr for v in find_vars(e))
-        case _:
-            return set()
-
-
-def define_unbound(vars):
-    if not vars:
-        yield {}
-        return
-
-    var, *vars = vars
-    match var:
-        case "m":
-            for f in define_unbound(vars):
-                for m in range(0, M_VAR_MAX):
-                    yield f | {"m": m}
-        case "t":
-            for f in define_unbound(vars):
-                for t in "CLIP KEEP STRIP".split():
-                    yield f | {"t": t}
-        case _:
-            raise ValueError(var)
-
-
-def automagically_define_unbound(expr: any, frame: dict[str, str]):
-    vars = find_vars(expr) - set(frame)
-    for f in define_unbound(vars):
-        yield f | frame
-
-
 class Lib:
     def __init__(self):
         self.bnf = {}
@@ -304,24 +255,6 @@ class Lib:
             raise ValueError("no results")
         return solo(results)
 
-    enums = set("BLOCK-IN BLOCK-KEY BLOCK-OUT CLIP FLOW-IN FLOW-KEY FLOW-OUT KEEP STRIP".split())
-
-    def new_frame(self, params, args, old_frame):
-        frame = {}
-        for param, arg in zip(params, (old_frame.get(arg, arg) for arg in args)):
-            if param.isdigit() or param in self.enums:
-                if param != arg:
-                    return None
-            elif param == "n+1":
-                if arg == "0":
-                    return None
-                frame["n"] = str(int(arg) - 1)
-            else:
-                if not param.isalpha():
-                    raise NotImplementedError(param)
-                frame[param] = arg
-        return frame
-    
     def ignore_whitespace(self, i: int) -> int:
         if i + 1 < len(self.text) and self.text[i : i + 2] == "//":
             try:
