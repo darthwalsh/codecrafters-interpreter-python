@@ -14,6 +14,8 @@ def solo(items, default=None):
     return default or items
 
 
+# TODO trim this functionality by running `coverage run -m unittest test.test_bnf_lib.TestBnfLib.test_load ; coverage xml` and find unused features.
+# MAYBE try to get original production.bnf to work, with special i.e. <any char except "\"">
 class Bnf:
     """Automatic parse rule based on bnf rule text
 
