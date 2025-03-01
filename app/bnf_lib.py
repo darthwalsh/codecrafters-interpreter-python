@@ -40,6 +40,7 @@ class Bnf:
         
         self.try_take(r"\s+")
         self.expr = self.parse()
+        self.take(";")
         if self.i < len(self.text):
             raise ValueError("remaining", self.text[self.i : self.i + 10], "got", self.expr)
 
@@ -129,8 +130,7 @@ def split_defs(bnf_text):
 
     for b, e in zip(def_lines, def_lines[1:]):
         def_str = "\n".join(lines[b:e]).strip()
-        name, text = (s.strip() for s in def_str.split("→"))
-        yield name, text
+        yield (s.strip() for s in def_str.split("→"))
 
 
 @dataclass(frozen=True)
@@ -181,7 +181,7 @@ class Lib:
 
         for name, text in split_defs(productions):
             try:
-                rule = Bnf(text.strip(";"))
+                rule = Bnf(text)
             except Exception as e:
                 raise ValueError(name) from e
             self.bnf.setdefault(name, []).append(rule.expr)

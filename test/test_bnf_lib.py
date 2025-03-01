@@ -5,80 +5,66 @@ from app.bnf_lib import Bnf, Lib, ParseResult, untuple
 
 unittest.util._MAX_LENGTH = 2000  # type: ignore
 
+def bnf(text):
+    return Bnf(text + ";").expr
+
 
 class TestBnf(unittest.TestCase):
     def test_char(self):
-        g = Bnf('"c"')
-        self.assertEqual(g.expr, "c")
+        self.assertEqual(bnf('"c"'), "c")
 
     def test_string(self):
-        g = Bnf('"abc"')
-        self.assertEqual(g.expr, "abc")
+        self.assertEqual(bnf('"abc"'), "abc")
 
-        g = Bnf('"\\""')
-        self.assertEqual(g.expr, '"')
-        g = Bnf('"a\\""')
-        self.assertEqual(g.expr, 'a"')
-        g = Bnf('"\\"a"')
-        self.assertEqual(g.expr, '"a')
+        self.assertEqual(bnf('"\\""'), '"')
+        self.assertEqual(bnf('"a\\""'), 'a"')
+        self.assertEqual(bnf('"\\"a"'), '"a')
 
     def test_str(self):
-        g = Bnf('"y" "a" "m" "l"')
-        self.assertEqual(g.expr, ("concat", "y", "a", "m", "l"))
+        self.assertEqual(bnf('"y" "a" "m" "l"'), ("concat", "y", "a", "m", "l"))
 
     def test_range(self):
-        g = Bnf('"0" ... "9"')
-        self.assertEqual(g.expr, range(0x30, 0x3A))
+        self.assertEqual(bnf('"0" ... "9"'), range(0x30, 0x3A))
 
     def test_rules(self):
-        g = Bnf("statement")
-        self.assertEqual(g.expr, ("rule", "statement"))
+        self.assertEqual(bnf("statement"), ("rule", "statement"))
 
     def test_special(self):
-        g = Bnf('<any char except "\\"">')
-        self.assertEqual(g.expr, ("diff", range(0, 0x10FFFF), '"'))
+        self.assertEqual(bnf('<any char except "\\"">'), ("diff", range(0, 0x10FFFF), '"'))
 
     def test_or(self):
-        g = Bnf('"0" | "9"')
-        self.assertEqual(g.expr, {"0", "9"})
+        self.assertEqual(bnf('"0" | "9"'), {"0", "9"})
 
     def test_opt(self):
-        g = Bnf('"a"?')
-        self.assertEqual(g.expr, ("repeat", 0, 1, "a"))
+        self.assertEqual(bnf('"a"?'), ("repeat", 0, 1, "a"))
 
     def test_star(self):
-        g = Bnf('"a"*')
-        self.assertEqual(g.expr, ("repeat", 0, math.inf, "a"))
+        self.assertEqual(bnf('"a"*'), ("repeat", 0, math.inf, "a"))
 
     def test_plus(self):
-        g = Bnf('"a"+')
-        self.assertEqual(g.expr, ("repeat", 1, math.inf, "a"))
+        self.assertEqual(bnf('"a"+'), ("repeat", 1, math.inf, "a"))
 
     def test_parens(self):
-        g = Bnf('"x" (hex hex) "-"')
-        self.assertEqual(g.expr, ("concat", "x", ("concat", ("rule", "hex"), ("rule", "hex")), "-"))
+        self.assertEqual(bnf('"x" (hex hex) "-"'), ("concat", "x", ("concat", ("rule", "hex"), ("rule", "hex")), "-"))
 
     def test_empty(self):
-        g = Bnf(" ")
-        self.assertEqual(g.expr, ("concat",))
+        self.assertEqual(bnf(" "), ("concat",))
 
     def test_comment(self):
-        g = Bnf(" dig /* Empty */ ")
-        self.assertEqual(g.expr, ("rule", "dig"))
+        self.assertEqual(bnf(" dig /* Empty */ "), ("rule", "dig"))
 
     def test_comments(self):
-        g = Bnf("dig /* A-F */\n| bar /* a-f */")
-        self.assertEqual(g.expr, {("rule", "dig"), ("rule", "bar")})
+        self.assertEqual(bnf("dig /* A-F */\n| bar /* a-f */"), {("rule", "dig"), ("rule", "bar")})
 
     def test_remaining(self):
         with self.assertRaises(ValueError) as e_info:
-            Bnf('"1" ^^garbage')
+            bnf('"1"; ^^garbage')
         self.assertIn("garbage", str(e_info.exception))
         self.assertIn("remaining", str(e_info.exception))
 
     def test_bad_string(self):
         with self.assertRaises(ValueError) as e_info:
-            Bnf('"\\ "')
+            bnf('"\\ "')
         self.assertIn("'", str(e_info.exception))
         self.assertIn("expected", str(e_info.exception))
 
