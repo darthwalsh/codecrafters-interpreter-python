@@ -15,40 +15,24 @@ class TestBnf(unittest.TestCase):
         g = Bnf('"abc"')
         self.assertEqual(g.expr, "abc")
 
-    def test_singlequote(self):
-        g = Bnf("'$'")
-        self.assertEqual(g.expr, "$")
-
-    def test_singlequote_backslash(self):
-        g = Bnf("'\\'")
-        self.assertEqual(g.expr, "\\")
+        g = Bnf('"\\""')
+        self.assertEqual(g.expr, '"')
+        g = Bnf('"a\\""')
+        self.assertEqual(g.expr, 'a"')
+        g = Bnf('"\\"a"')
+        self.assertEqual(g.expr, '"a')
 
     def test_str(self):
         g = Bnf('"y" "a" "m" "l"')
         self.assertEqual(g.expr, ("concat", "y", "a", "m", "l"))
 
-    def test_unicode(self):
-        g = Bnf("x9")
-        self.assertEqual(g.expr, "\x09")
-        g = Bnf("x10FFFF")
-        self.assertEqual(g.expr, "\U0010ffff")
-
     def test_range(self):
-        g = Bnf("[x30-x39]")
+        g = Bnf('"0" ... "9"')
         self.assertEqual(g.expr, range(0x30, 0x3A))
-        g = Bnf("[xA0-xD7FF]")
-        self.assertEqual(g.expr, range(0xA0, 0xD800))
 
     def test_rules(self):
-        g = Bnf("nb-json")
-        self.assertEqual(g.expr, ("rule", "nb-json"))
-
-    def test_lookarounds(self):
-        g = Bnf("[ lookahead ≠ ns-char ]")
-        self.assertEqual(g.expr, ("?!", ("rule", "ns-char")))
-
-        g = Bnf("[ lookbehind = ns-char ]")
-        self.assertEqual(g.expr, ("?<=", ("rule", "ns-char")))
+        g = Bnf("statement")
+        self.assertEqual(g.expr, ("rule", "statement"))
 
     def test_special(self):
         g = Bnf('<any char except "\\"">')
@@ -70,21 +54,9 @@ class TestBnf(unittest.TestCase):
         g = Bnf('"a"+')
         self.assertEqual(g.expr, ("repeat", 1, math.inf, "a"))
 
-    def test_curlyrepeat(self):
-        g = Bnf('"a"{4}')
-        self.assertEqual(g.expr, ("repeat", 4, 4, "a"))
-
-    def test_diff(self):
-        g = Bnf("dig - x30")
-        self.assertEqual(g.expr, ("diff", ("rule", "dig"), "0"))
-
-    def test_2diff(self):
-        g = Bnf("dig - x30 - x31")
-        self.assertEqual(g.expr, ("diff", ("rule", "dig"), "0", "1"))
-
     def test_parens(self):
-        g = Bnf('"x" (hex{2} ) "-"')
-        self.assertEqual(g.expr, ("concat", "x", ("repeat", 2, 2, ("rule", "hex")), "-"))
+        g = Bnf('"x" (hex hex) "-"')
+        self.assertEqual(g.expr, ("concat", "x", ("concat", ("rule", "hex"), ("rule", "hex")), "-"))
 
     def test_empty(self):
         g = Bnf(" ")
@@ -94,13 +66,9 @@ class TestBnf(unittest.TestCase):
         g = Bnf(" dig /* Empty */ ")
         self.assertEqual(g.expr, ("rule", "dig"))
 
-    def test_commenthash(self):
-        g = Bnf(" # Empty ")
-        self.assertEqual(g.expr, ("concat",))
-
     def test_comments(self):
-        g = Bnf("[x41-x46] # A-F \n| [x61-x66] # a-f ")
-        self.assertEqual(g.expr, {range(0x41, 0x47), range(0x61, 0x67)})
+        g = Bnf("dig /* A-F */\n| bar /* a-f */")
+        self.assertEqual(g.expr, {("rule", "dig"), ("rule", "bar")})
 
     def test_remaining(self):
         with self.assertRaises(ValueError) as e_info:
@@ -110,7 +78,7 @@ class TestBnf(unittest.TestCase):
 
     def test_bad_string(self):
         with self.assertRaises(ValueError) as e_info:
-            Bnf("'1\\'")
+            Bnf('"\\ "')
         self.assertIn("'", str(e_info.exception))
         self.assertIn("expected", str(e_info.exception))
 
@@ -118,7 +86,11 @@ class TestBnf(unittest.TestCase):
         self.assertEqual(len(Lib().bnf), 32)
 
 
-library = Lib()
+try:
+    library = Lib()
+except Exception as e:
+    print(e)
+    library = "Failed to load library"
 
 
 class TestLib(unittest.TestCase):

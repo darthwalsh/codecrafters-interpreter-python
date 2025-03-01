@@ -371,14 +371,8 @@ def convert_expr(tree) -> Expr:
             raise NotImplementedError(type(tree), tree)
 
 
-# TODO whitespace
-# TODO comments
-
-
-# TODO EOF diff in productions.bnf (also see prev git history!)
 class Parser:
     def __init__(self, source: str, report: Callable[[int, str, str], None]):
-        # https://craftinginterpreters.com/appendix-i.html
         self.lib = Lib()
         self.current = 0
         self.report = report

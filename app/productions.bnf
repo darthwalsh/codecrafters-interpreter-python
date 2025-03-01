@@ -1,3 +1,4 @@
+/* Copied verbatim from https://craftinginterpreters.com/appendix-i.html - Chapter 10 */
 program        → declaration* EOF ;
 declaration    → funDecl
                | varDecl
@@ -43,7 +44,7 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
                | IDENTIFIER ;
 
 NUMBER         → DIGIT+ ( "." DIGIT+ )? ;
-STRING         → '"' <any char except "\"">* '"' ;
+STRING         → "\"" <any char except "\"">* "\"" ;
 IDENTIFIER     → ALPHA ( ALPHA | DIGIT )* ;
-ALPHA          → [x61-x7A] | [x41-x5A] | "_" ;
-DIGIT          → [x30-x39] ;
+ALPHA          → "a" ... "z" | "A" ... "Z" | "_" ;
+DIGIT          → "0" ... "9" ;

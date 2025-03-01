@@ -1,6 +1,5 @@
 import math
 import re
-import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,42 +12,33 @@ def solo(items, default=None):
         return next(iter(items))
     return default or items
 
-
-# TODO trim this functionality by running `coverage run -m unittest test.test_bnf_lib.TestBnf.test_load ; coverage xml` and find unused features.
-# MAYBE try to get original production.bnf to work, with special i.e. <any char except "\"">
 class Bnf:
     """Automatic parse rule based on bnf rule text
 
     Spec 4.1. Production Syntax
     Represents different entries using python expressions:
       - Atomic terms:
-      "abc"                Text string is str "abc" (no backslash escaping)
-      'c'                  Text character is str "c" (no backslash escaping)
-      x30                  Escaped character is str "0"
-      [xA0-xD7FF]          Character range is exclusive range(0xA0, 0xD800)
+      "abc\""              Text string is str 'abc"' (backslash can escape double quote)
+      "0" ... "9"          Character range is exclusive range(0x30, 0x3A)
       term                 Production is tuple ("rule", "term")
-      - Special productions also produce regex (different DOTALL)
-      <any char except "\"">
+      <any char except "\""> like it says on the tin
       "a" "b"              Concatenation is tuple ("concat", "a", "b")
       "a" | "b"            Alternation is frozenset({"a", "b"})
       "a"?                 Option is tuple ("repeat", 0, 1, "a")
       "a"*                 Repeat is tuple ("repeat", 0, inf, "a")
       "a"+                 Repeat is tuple ("repeat", 1, inf, "a")
-      "a"{4}               Repeat is tuple ("repeat", 4, 4, "a")
-      dig - "0" - "1"      Difference is tuple ("diff", ("rule", "dig"), "0", "1")
 
       # EOF                End of whole text stream is ("$",)
-      # UPPERCASE rule names just takes substring, and skips over whitespace and //comment rule
+      # UPPERCASE rule     Returns substring, including whitespace and //comment rule
+
+      /* BNF source can have C multiline comments */
     """
 
     def __init__(self, text: str):
-        # '# Comments' shouldn't have semantics
-        self.text = re.sub(r"# .*", "", text).strip()
-
-        # TODO some comments have semantics!
-        # Not in spec...
-        self.text = re.sub(r"/\*.*?\*/", "", self.text, flags=re.DOTALL)
+        self.text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
         self.i = 0
+        
+        self.try_take(r"\s+")
         self.expr = self.parse()
         if self.i < len(self.text):
             raise ValueError("remaining", self.text[self.i : self.i + 10], "got", self.expr)
@@ -66,20 +56,11 @@ class Bnf:
     def parseConcat(self):
         items = []
         while True:
-            item = self.parseDiff()
+            item = self.parseRepeat()
             if item:
                 items.append(item)
             else:
                 return solo(items, ("concat", *items))
-
-    def parseDiff(self):
-        subtrahend = self.parseRepeat()
-        minuends = []
-        while self.try_take("-"):
-            minuends.append(self.parseRepeat())
-        if minuends:
-            return ("diff", subtrahend, *minuends)
-        return subtrahend
 
     def parseRepeat(self):
         e = self.parseSingle()
@@ -89,9 +70,6 @@ class Bnf:
                 lo = 1
             elif c == "?":
                 hi = 1
-            elif c == "{":
-                lo = hi = int(self.take(r"\d+"))
-                self.take("}")
             return ("repeat", lo, hi, e)
         return e
 
@@ -100,31 +78,14 @@ class Bnf:
 
     def parseSingle(self):
         if self.try_take('"'):
-            return self.parseString()
-        if self.try_take("'"):
-            c = self.take()  # \ isn't used as an escape
-            self.take("'")
-            return c
-        elif self.try_take("x"):
-            return chr(int(self.take(r"[0-9A-F]{1,6}"), 16))
-        elif self.try_take(r"\[x"):
-            begin = int(self.take(r"[0-9A-F]{1,6}"), 16)
-            self.take("-x")
-            end = int(self.take(r"[0-9A-F]{1,6}"), 16) + 1
-            self.take(r"\]")
-            return range(begin, end)
-        elif name := self.try_take(Bnf.ident_reg):
-            match = re.match(Bnf.ident_reg, name)
-            name, args = match.groups()
-            if args:
-                raise NotImplementedError("TODO Lox Grammar doesn't need args")
-            if "(" in name:
-                raise ValueError(name)
-
-            args = args.strip("()").split(",") if args else ()
-            return "rule", name, *args
-        elif self.try_take(r"\[ look"):
-            return self.parseLookaround()
+            s = self.parseString()
+            if not self.try_take(r"\.\.\."):
+                return s
+            self.take('"')
+            e = self.parseString()
+            return range(ord(s), ord(e) + 1)
+        elif name := self.try_take(r'\w+'):
+            return "rule", name
         elif self.try_take(r'<any char except "\\"">'):
             return ("diff", range(0, 0x10FFFF), '"')
         elif self.try_take(r"\("):
@@ -134,24 +95,16 @@ class Bnf:
         else:
             return None
 
-    def parseLookaround(self):
-        if self.try_take("ahead"):
-            pos = bool(self.try_take("="))
-            if not pos:
-                self.take("≠")
-            e = self.parseSingle()
-            self.take("]")
-            return ("?=" if pos else "?!", e)
-
-        self.take("behind =")
-        e = self.parseSingle()
-        self.take("]")
-        return ("?<=", e)
-
     def parseString(self):
         cs = []
         while not self.try_take('"'):
-            cs.append(self.take())
+            if self.try_take(r"\\"):
+                c = self.take()
+                if c != '"':
+                    raise ValueError("expected", '"', "got", c)
+                cs.append(c)
+            else:
+                cs.append(self.take())
         return "".join(cs)
 
     def try_take(self, pattern=".") -> str:
@@ -230,7 +183,7 @@ class Lib:
             try:
                 rule = Bnf(text.strip(";"))
             except Exception as e:
-                raise type(e)(f"{name}: {e!s}").with_traceback(sys.exc_info()[2])
+                raise ValueError(name) from e
             self.bnf.setdefault(name, []).append(rule.expr)
         self.bnf["EOF"] = [("$",)]
 
