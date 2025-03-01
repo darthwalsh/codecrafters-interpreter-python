@@ -170,20 +170,6 @@ class Bnf:
         return s
 
 
-def str_concat(head, tail):
-    # if isinstance(head, str) and isinstance(tail, str):
-    #     return head + tail
-    if tail is None:
-        return head
-    if isinstance(tail, tuple):
-        return (head, *tail)
-    # try:
-    #     comb = (head, *tail)
-    # except Exception:
-    return (head, tail)
-    return solo(comb)
-
-
 def split_defs(bnf_text):
     lines = bnf_text.split("\n")
     def_lines = [i for i, line in enumerate(lines) if "→" in line] + [len(lines)]
@@ -212,6 +198,22 @@ class ParseResult:
         else:
             expr = str(self.expr)
         return f"{self.rule}({expr})"
+    
+    def __repr__(self):
+        return str(self)
+
+
+def untuple(o: object):
+    if isinstance(o, tuple):
+        result = []
+        for t in o:
+            t = untuple(t)
+            if t != ():
+                result.append(t)
+        if len(result) == 1:
+            return result[0]
+        return tuple(result)
+    return o
 
 
 class Lib:
@@ -268,23 +270,24 @@ class Lib:
                 for e in expr:
                     yield from self.resolve(i, e, skip_ws)
             case ("concat",):
-                yield None, i
+                yield (), i
             case ("concat", e, *exprs):
                 for vv, ii in self.resolve(i, e, skip_ws):
                     for vvv, iii in self.resolve(ii, ("concat", *exprs), skip_ws):
-                        yield str_concat(vv, vvv), iii
+                        yield (vv,) + vvv, iii
             case ("repeat", lo, hi, e):
                 if not lo:
-                    yield None, i
+                    yield (), i
                 if hi:
                     dec = ("repeat", max(lo - 1, 0), hi - 1, e)
                     for vv, ii in self.resolve(i, e, skip_ws):
                         for vvv, iii in self.resolve(ii, dec, skip_ws):
-                            yield str_concat(vv, vvv), iii
+                            yield (vv,) + vvv, iii
             case ("rule", name):
                 for expr in self.bnf[name]:
                     literal_text = name.isupper()
                     for e, ii in self.resolve(i, expr, skip_ws=not literal_text):
+                        e = untuple(e)
                         if literal_text:
                             yield ParseResult(name, i, ii, self.text[i : ii]), ii
                         elif isinstance(e, ParseResult):

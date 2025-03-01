@@ -13,7 +13,7 @@ class ParseError(Exception):
     pass
 
 
-class OldParser: # TODO(cleanup)
+class OldParser:  # TODO(cleanup)
     def __init__(self, tokens: list[Token], report: Callable[[int, str, str], None]):
         self.tokens = tokens
         self.current = 0
@@ -68,7 +68,6 @@ class OldParser: # TODO(cleanup)
     def followed_by(self, t: TT, *, after: str):
         yield
         self.take(t, f"Expect '{OldParser.token_type_2_char[t]}' after {after}")
-
 
     def declaration(self) -> Stmt | None:
         try:
@@ -189,7 +188,6 @@ class OldParser: # TODO(cleanup)
                 statements.append(st)
         return statements
 
-
     def expression(self) -> Expr:
         return self.assignment()
 
@@ -290,8 +288,10 @@ class NotConvertible(Exception):
     pass
 
 
-with_equal = {c + "=": TT(tt + 1) for c, tt in char_equal_tokens.items() }
-all_tokens = char_tokens | char_equal_tokens | with_equal | keywords
+with_equal = {c + "=": TT(tt + 1) for c, tt in char_equal_tokens.items()}
+extra_tokens = {"/": TT.SLASH}
+all_tokens = char_tokens | char_equal_tokens | with_equal | keywords | extra_tokens
+
 
 def fake_token(c: str):
     return Token(all_tokens[c], c, -99, None)
@@ -302,21 +302,36 @@ def convert_stmt(tree) -> Stmt:
 
 
 def convert_expr(tree) -> Expr:
+    print("convert_expr(", tree, file=sys.stderr, flush=True)  # TODONT
     match tree:
+        case ParseResult("logic_and" | "logic_or", _s, _e, (left, ops)):
+            expr = convert_expr(left)
+            if not isinstance(ops[1], tuple):
+                # HACK should be Tuple[Tuple[str, Expr], ...], unless there is only one then got untupled to Tuple[str, Expr]? maybe remove this hack
+                ops = (ops,)
+            for op, right in ops:
+                expr = Logical(expr, fake_token(op), convert_expr(right))
+            return expr
+        case ParseResult("equality" | "comparison" | "term" | "factor", _s, _e, (left, ops)):
+            expr = convert_expr(left)
+            if not isinstance(ops[1], tuple):  # HACK ditto
+                ops = (ops,)
+            for op, right in ops:
+                expr = Binary(expr, fake_token(op), convert_expr(right))
+            return expr
+
         case ParseResult("unary", _s, _e, (op, e)):
             return Unary(fake_token(op), convert_expr(e))
-        case ParseResult("logic_and" | "logic_or", _s, _e, (left, op, right)):
-            return Logical(convert_expr(left), fake_token(op), convert_expr(right))
-        case ParseResult("equality" | "comparison" | "term" | "factor", _s, _e, (left, op, right)):
-            return Binary(convert_expr(left), fake_token(op), convert_expr(right))
-        
+
         case ParseResult("call", _s, _e, (callee, *invokes)):
-            raise NotImplementedError("TODO the parse tree is wrong -- should NOT be flattening this part of the tree ")
+            raise NotImplementedError(
+                "TODO the parse tree is wrong -- should NOT be flattening this part of the tree "
+            )
             e = convert_expr(callee)
             for _l, *args, _r in invokes:
                 e = Call(e, fake_token(")"), [convert_expr(a) for a in args])
             return e
-        
+
         case ParseResult("primary", _s, _e, "true"):
             return Literal(True)
         case ParseResult("primary", _s, _e, "false"):
@@ -325,7 +340,7 @@ def convert_expr(tree) -> Expr:
             return Literal(None)
         case ParseResult("primary", _s, _e, ("(", e, ")")):
             return Grouping(convert_expr(e))
-        
+
         case ParseResult("NUMBER", _s, _e, e):
             if not isinstance(e, str):
                 raise ValueError(e)
@@ -359,6 +374,7 @@ def convert_expr(tree) -> Expr:
 # TODO whitespace
 # TODO comments
 
+
 # TODO EOF diff in productions.bnf (also see prev git history!)
 class Parser:
     def __init__(self, source: str, report: Callable[[int, str, str], None]):
@@ -372,7 +388,7 @@ class Parser:
         got = self.lib.parse(self.source, ("rule", "expression"))
         print(got)
         return convert_expr(got)
-    
+
     def parse_stmt(self):
         got = self.lib.parse(self.source, ("rule", "program"))
         print(got)
