@@ -134,7 +134,7 @@ def split_defs(bnf_text):
 
 
 @dataclass(frozen=True)
-class ParseResult:
+class Parse:
     rule: str
     start: int
     end: int
@@ -242,11 +242,11 @@ class Lib:
                     for e, ii in self.resolve(i, expr, skip_ws=not literal_text):
                         e = untuple(e)
                         if literal_text:
-                            yield ParseResult(name, i, ii, self.text[i : ii]), ii
-                        elif isinstance(e, ParseResult):
+                            yield Parse(name, i, ii, self.text[i : ii]), ii
+                        elif isinstance(e, Parse):
                             yield e, ii
                         else:
-                            yield ParseResult(name, i, ii, e), ii
+                            yield Parse(name, i, ii, e), ii
             case ("diff", e, *subtrahends):
                 for s in subtrahends:
                     for o in self.resolve(i, s, skip_ws):

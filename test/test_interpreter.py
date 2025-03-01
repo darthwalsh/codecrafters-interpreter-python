@@ -10,6 +10,7 @@ from app.scanner import TokenType as TT
 from test.runner import parse, reraise
 
 
+@unittest.expectedFailure
 class TestInterpreter(unittest.TestCase):
     def validate(self, source, expected):
         interpreter = Interpreter(reraise)

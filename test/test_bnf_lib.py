@@ -1,7 +1,7 @@
 import math
 import unittest
 
-from app.bnf_lib import Bnf, Lib, ParseResult, untuple
+from app.bnf_lib import Bnf, Lib, Parse, untuple
 
 unittest.util._MAX_LENGTH = 2000  # type: ignore
 
@@ -114,16 +114,16 @@ class TestLib(unittest.TestCase):
         self.assertEqual(library.parse("aaa", ("repeat", 3, 3, "a")), tuple("aaa"))
 
     def test_rules(self):
-        self.assertEqual(library.parse("x2A", ("rule", "IDENTIFIER")), ParseResult("IDENTIFIER", 0, 3, "x2A"))
+        self.assertEqual(library.parse("x2A", ("rule", "IDENTIFIER")), Parse("IDENTIFIER", 0, 3, "x2A"))
 
     def test_white_space(self):
         self.assertEqual(library.parse(" c", "c"), "c")
         self.assertEqual(library.parse("c ", "c"), "c")
         self.assertEqual(library.parse("c c", ("concat", "c", "c")), tuple("cc"))
 
-        self.assertEqual(library.parse('"AB"', ("rule", "STRING")), ParseResult("STRING", 0, 4, '"AB"'))
-        self.assertEqual(library.parse('" B"', ("rule", "STRING")), ParseResult("STRING", 0, 4, '" B"'))
-        self.assertEqual(library.parse('"A "', ("rule", "STRING")), ParseResult("STRING", 0, 4, '"A "'))
+        self.assertEqual(library.parse('"AB"', ("rule", "STRING")), Parse("STRING", 0, 4, '"AB"'))
+        self.assertEqual(library.parse('" B"', ("rule", "STRING")), Parse("STRING", 0, 4, '" B"'))
+        self.assertEqual(library.parse('"A "', ("rule", "STRING")), Parse("STRING", 0, 4, '"A "'))
 
         self.assertEqual(library.parse("c//COM", "c"), "c")
         self.assertEqual(library.parse("c //COM\nc", ("concat", "c", "c")), tuple("cc"))
@@ -131,7 +131,7 @@ class TestLib(unittest.TestCase):
     def test_end(self):
         self.assertEqual(
             library.parse("a", ("concat", "a", ("rule", "EOF"))),
-            ("a", ParseResult(rule="EOF", start=1, end=1, expr="")),
+            ("a", Parse(rule="EOF", start=1, end=1, expr="")),
         )
 
         with self.assertRaises(ValueError) as e_info:
@@ -174,10 +174,10 @@ class TestLib(unittest.TestCase):
         )
 
 
-def split_parse_result(pr: ParseResult | object):
+def split_parse_result(pr: Parse | object):
     if isinstance(pr, tuple):
         return tuple(split_parse_result(p) for p in pr)
-    if isinstance(pr, ParseResult):
+    if isinstance(pr, Parse):
         return pr.rule, split_parse_result(pr.expr)
     return pr
 

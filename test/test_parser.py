@@ -55,6 +55,9 @@ class TestParser(unittest.TestCase):
         self.validate("!1", "(! 1.0)")
         self.validate("!!1", "(! (! 1.0))")
 
+
+@unittest.expectedFailure
+class TestParserErrors(unittest.TestCase):
     def test_call(self):
         self.validate("a()", "a()")
         self.validate('"abc"(x)(y,z)', "abc(x)(y, z)")

@@ -2,7 +2,7 @@ import sys
 from collections.abc import Callable
 from contextlib import contextmanager
 
-from app.bnf_lib import Lib, ParseResult
+from app.bnf_lib import Lib, Parse
 from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable
 from app.scanner import Token, char_equal_tokens, char_tokens, keywords
 from app.scanner import TokenType as TT
@@ -304,7 +304,7 @@ def convert_stmt(tree) -> Stmt:
 def convert_expr(tree) -> Expr:
     print("convert_expr(", tree, file=sys.stderr, flush=True)  # TODONT
     match tree:
-        case ParseResult("logic_and" | "logic_or", _s, _e, (left, ops)):
+        case Parse("logic_and" | "logic_or", _s, _e, (left, ops)):
             expr = convert_expr(left)
             if not isinstance(ops[1], tuple):
                 # HACK should be Tuple[Tuple[str, Expr], ...], unless there is only one then got untupled to Tuple[str, Expr]? maybe remove this hack
@@ -312,7 +312,7 @@ def convert_expr(tree) -> Expr:
             for op, right in ops:
                 expr = Logical(expr, fake_token(op), convert_expr(right))
             return expr
-        case ParseResult("equality" | "comparison" | "term" | "factor", _s, _e, (left, ops)):
+        case Parse("equality" | "comparison" | "term" | "factor", _s, _e, (left, ops)):
             expr = convert_expr(left)
             if not isinstance(ops[1], tuple):  # HACK ditto
                 ops = (ops,)
@@ -320,10 +320,10 @@ def convert_expr(tree) -> Expr:
                 expr = Binary(expr, fake_token(op), convert_expr(right))
             return expr
 
-        case ParseResult("unary", _s, _e, (op, e)):
+        case Parse("unary", _s, _e, (op, e)):
             return Unary(fake_token(op), convert_expr(e))
 
-        case ParseResult("call", _s, _e, (callee, *invokes)):
+        case Parse("call", _s, _e, (callee, *invokes)):
             raise NotImplementedError(
                 "TODO the parse tree is wrong -- should NOT be flattening this part of the tree "
             )
@@ -332,30 +332,30 @@ def convert_expr(tree) -> Expr:
                 e = Call(e, fake_token(")"), [convert_expr(a) for a in args])
             return e
 
-        case ParseResult("primary", _s, _e, "true"):
+        case Parse("primary", _s, _e, "true"):
             return Literal(True)
-        case ParseResult("primary", _s, _e, "false"):
+        case Parse("primary", _s, _e, "false"):
             return Literal(False)
-        case ParseResult("primary", _s, _e, "Nil"):
+        case Parse("primary", _s, _e, "Nil"):
             return Literal(None)
-        case ParseResult("primary", _s, _e, ("(", e, ")")):
+        case Parse("primary", _s, _e, ("(", e, ")")):
             return Grouping(convert_expr(e))
 
-        case ParseResult("NUMBER", _s, _e, e):
+        case Parse("NUMBER", _s, _e, e):
             if not isinstance(e, str):
                 raise ValueError(e)
             return Literal(float(e))
-        case ParseResult("STRING", _s, _e, e):
+        case Parse("STRING", _s, _e, e):
             if not isinstance(e, str):
                 raise ValueError(e)
             return Literal(e.strip('"'))
-        case ParseResult("IDENTIFIER", _s, _e, e):
+        case Parse("IDENTIFIER", _s, _e, e):
             if e in keywords:
                 raise NotConvertible("KeywordError")
             if not isinstance(e, str):
                 raise ValueError(e)
             return Variable(Token(TT.IDENTIFIER, e, -99, None))
-        case ParseResult(rule, _s, _e, e):
+        case Parse(rule, _s, _e, e):
             raise NotImplementedError(rule, e)
         case set():
             possible = []
