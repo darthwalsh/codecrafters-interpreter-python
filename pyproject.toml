@@ -27,3 +27,6 @@ extend-select = [
     "RUF013", # implicit-optional
     "UP",     # pyupgrade automatically upgrade syntax for newer python versions
 ]
+ignore = [
+    # "E701",   # multiple-statements-on-one-line-colon   # TODO change in another commit??? need to stop vscode from fighting too
+]

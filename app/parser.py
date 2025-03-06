@@ -1,6 +1,7 @@
 import sys
 from collections.abc import Callable
 from contextlib import contextmanager
+import typing
 
 from app.bnf_lib import Lib, Parse
 from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable
@@ -293,8 +294,14 @@ extra_tokens = {"/": TT.SLASH}
 all_tokens = char_tokens | char_equal_tokens | with_equal | keywords | extra_tokens
 
 
-def fake_token(c: str):
-    return Token(all_tokens[c], c, -99, None)
+def fake_token(c: str | Parse):
+    match c:
+        case Parse("_str", _s, _e, s):
+            return fake_token(typing.cast(str, s))
+        case str():
+            return Token(all_tokens[c], c, -99, None)
+        case _:
+            raise ValueError(c)
 
 
 def convert_stmt(tree) -> Stmt:
@@ -312,7 +319,7 @@ def convert_expr(tree) -> Expr:
             for op, right in ops:
                 expr = Logical(expr, fake_token(op), convert_expr(right))
             return expr
-        case Parse("equality" | "comparison" | "term" | "factor", _s, _e, (left, ops)):
+        case Parse("equality" | "comparison" | "term" | "factor", _s, _e, Parse("_concat", __s, __e, (left, ops))):
             expr = convert_expr(left)
             if not isinstance(ops[1], tuple):  # HACK ditto
                 ops = (ops,)
@@ -320,7 +327,7 @@ def convert_expr(tree) -> Expr:
                 expr = Binary(expr, fake_token(op), convert_expr(right))
             return expr
 
-        case Parse("unary", _s, _e, (op, e)):
+        case Parse("unary", _s, _e, Parse("_concat", __s, __e, (op, e))):
             return Unary(fake_token(op), convert_expr(e))
 
         case Parse("call", _s, _e, (callee, *invokes)):
@@ -338,7 +345,7 @@ def convert_expr(tree) -> Expr:
             return Literal(False)
         case Parse("primary", _s, _e, "Nil"):
             return Literal(None)
-        case Parse("primary", _s, _e, ("(", e, ")")):
+        case Parse("primary", _s, _e, Parse("_concat", _s4, _e4, (Parse("_str", __s, __e, "("), e, Parse("_str", _s_, _e_, ")")))):
             return Grouping(convert_expr(e))
 
         case Parse("NUMBER", _s, _e, e):
@@ -351,10 +358,17 @@ def convert_expr(tree) -> Expr:
             return Literal(e.strip('"'))
         case Parse("IDENTIFIER", _s, _e, e):
             if e in keywords:
-                raise NotConvertible("KeywordError")
+                raise NotConvertible("KeywordError")  # TODO too late for this. `true` will parse as primary(_true) || primary(_str(true))) -- maybe use the sorted production rules, and in a tie for frozen-set, only take the first?
             if not isinstance(e, str):
                 raise ValueError(e)
             return Variable(Token(TT.IDENTIFIER, e, -99, None))
+        
+        case Parse(rule, _s, _e, (e,)):
+            print("Drilling through trivial tuple:", rule, file=sys.stderr, flush=True)
+            return convert_expr(e)
+        case Parse(rule, _s, _e, Parse()):
+            print("Drilling through trivial parse node:", rule, file=sys.stderr, flush=True)  # TODO too powerful, shouldn't drill through if...? Causes worse error messages later on
+            return convert_expr(tree.expr)
         case Parse(rule, _s, _e, e):
             raise NotImplementedError(rule, e)
         case set():
