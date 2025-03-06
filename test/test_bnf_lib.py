@@ -154,6 +154,15 @@ class TestLib(unittest.TestCase):
     def test_rules(self):
         self.assertEqual(parse("x2A", ("rule", "IDENTIFIER")), Parse("IDENTIFIER", 0, 3, "x2A"))
 
+    def test_identifier_hack(self):
+        with self.assertRaises(ValueError) as e_info:
+            parse("nil", ("rule", "IDENTIFIER"))
+        self.assertIn("no results", str(e_info.exception))
+
+        self.assertEqual(parse("nil", ("rule", "primary")), Parse("primary", 0, 3, "nil"))
+
+        self.assertEqual(parse("nil2", ("rule", "IDENTIFIER")), Parse("IDENTIFIER", 0, 4, "nil2"))
+
     def test_white_space(self):
         self.assertEqual(parse(" c", "c"), "c")
         self.assertEqual(parse("c ", "c"), "c")

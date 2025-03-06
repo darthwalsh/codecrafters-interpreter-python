@@ -30,8 +30,8 @@ class TestParser(unittest.TestCase):
         self.validate('"ab"', "ab")
         self.validate("(1)", "(group 1.0)")
         self.validate("((1))", "(group (group 1.0))")
-        # self.validate("true", "true") # TODO(ident) figure out NotConvertible hack not working
-        # self.validate("nil", "nil") # TODO(ident) figure out NotConvertible hack not working
+        self.validate("true", "true")
+        self.validate("nil", "nil")
 
     def test_logical(self):
         self.validate("x and y", "(AND x y)")
@@ -85,7 +85,7 @@ class TestParser(unittest.TestCase):
 
     def test_return(self):
         self.validate("return a;", "return a;")  # MAYBE refactor when both eq: self.round_trip("return a;")
-        # self.validate("return;", "return;") # TODO(ident) ambiguous parse.
+        self.validate("return;", "return;")
 
     def test_if(self):
         self.validate("if (1) { 1; }", "if (1.0) [{ 1.0; }]")

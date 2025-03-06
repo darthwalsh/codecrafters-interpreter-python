@@ -1,10 +1,12 @@
 import logging
 import math
 import re
+import typing
 from collections.abc import Iterator
 from dataclasses import dataclass, replace
 from pathlib import Path
-import typing
+
+from app.scanner import keywords
 
 M_VAR_MAX = 6
 
@@ -33,6 +35,8 @@ class Bnf:
 
       # EOF                End of whole text stream is ("$",)
       # UPPERCASE rule     Returns substring, including whitespace and //comment rule
+      # IDENTIFIER         has special case, not to return reserved words. In theory, could add rules to BNF:
+                           ALPHA ( ALPHA | DIGIT )* - "nil" - "true" - "return" ... etc but seems too messy
 
       /* BNF source can have C multiline comments */
     """
@@ -289,7 +293,9 @@ class Lib:
                 for e, ii in self.resolve(i, self.bnf[name], skip_ws=not literal_text):
                     # Throw away parse tree for UPPERCASE rule
                     subtree = self.text[i:ii] if literal_text else e
-                    # TODO(ident) for IDENTIFIER, don't return if it's a reserved word: `return;` is not an Expression(Var("return"))
+                    # documented HACK for IDENTIFIER, otherwise `return;` is ambiguous parse for Expression(Var("return"))
+                    if name == "IDENTIFIER" and subtree in keywords:
+                        continue
                     yield Parse(name, i, ii, subtree), ii
             case ("diff", e, *subtrahends):
                 for s in subtrahends:

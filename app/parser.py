@@ -285,10 +285,6 @@ class OldParser:  # TODO(cleanup)
         return ParseError()
 
 
-class NotConvertible(Exception):
-    pass
-
-
 with_equal = {c + "=": TT(tt + 1) for c, tt in char_equal_tokens.items()}
 extra_tokens = {"/": TT.SLASH}
 all_tokens = char_tokens | char_equal_tokens | with_equal | keywords | extra_tokens
@@ -361,7 +357,7 @@ class Parser:
                 return Literal(True)
             case Parse("primary", _s, _e, "false"):
                 return Literal(False)
-            case Parse("primary", _s, _e, "Nil"):
+            case Parse("primary", _s, _e, "nil"):
                 return Literal(None)
             case Parse("primary", _s, _e, ("(", e, ")")):
                 return Grouping(self.convert_expr(e))
@@ -375,21 +371,15 @@ class Parser:
                     raise ValueError(e)
                 return Literal(e.strip('"'))
             case Parse("IDENTIFIER", _s, _e, e):
-                if e in keywords:
-                    # TODO(ident) too late for this. `true` will parse as primary(_true) || primary("true")) -- maybe use the sorted production rules (list-not-set), and in a tie only take the first?
-                    raise NotConvertible("KeywordError")
                 if not isinstance(e, str):
                     raise ValueError(e)
                 return Variable(Token(TT.IDENTIFIER, e, -99, None))
             case Parse(rule, _s, _e, e):
                 raise NotImplementedError(rule, e)
-            case set():
+            case set():  # TODO actually used?
                 possible = []
                 for e in tree:
-                    try:
-                        possible.append(self.convert_expr(e))
-                    except NotConvertible:
-                        pass
+                    possible.append(self.convert_expr(e))
                 if len(possible) == 1:
                     return possible[0]
                 raise RuntimeError("Ambiguous conversion", tree, "->", *possible)
