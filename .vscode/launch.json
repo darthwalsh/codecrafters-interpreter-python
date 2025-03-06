@@ -9,7 +9,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "app.main",
-            "args": ["parse", "/tmp/test.lox"],
+            "args": ["run", "/tmp/test.lox"],
             "console": "internalConsole"
         },
         {

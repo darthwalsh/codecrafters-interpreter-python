@@ -86,6 +86,10 @@ class Token:
     # column: int
     literal: object
 
+    def __post_init__(self):
+        if not isinstance(self.lexeme, str): # type: ignore
+            raise TypeError(f"Expected str, got {type(self.lexeme)}: {self.lexeme}")
+
     def __str__(self):
         lit = self.literal if self.literal is not None else "null"
         return f"{self.type.name} {self.lexeme} {lit}"

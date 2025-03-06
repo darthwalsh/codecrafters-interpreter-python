@@ -299,7 +299,7 @@ def fake_token(c: str | Parse):
         case Parse("_str", _s, _e, s):
             return fake_token(typing.cast(str, s))
         case str():
-            return Token(all_tokens[c], c, -99, None)
+            return Token(all_tokens[c], c, -99, None)  # TODO fix the -99 line numbers
         case _:
             raise ValueError(c)
 
@@ -318,9 +318,11 @@ class Parser:
         logging.info(shallower)
         return self.convert_expr(shallower)
 
-    def convert_expr(self, tree) -> Expr:
+    def convert_expr(self, tree: Parse | set) -> Expr:
         logging.debug("convert_expr( %s", tree)
         match tree:
+            case Parse("assignment", _s, _e, (Parse("IDENTIFIER", __s, __e, ident), _eq, value)):
+                return Assign(Token(TT.IDENTIFIER, ident, -99, None), self.convert_expr(value))
             case Parse("logic_and" | "logic_or", _s, _e, (left, ops)):
                 expr = self.convert_expr(left)
                 for op, right in ops:
@@ -392,17 +394,61 @@ class Parser:
                     return possible[0]
                 raise RuntimeError("Ambiguous conversion", tree, "->", *possible)
             case _:
-                raise NotImplementedError(type(tree), tree)
+                raise NotImplementedError(type(tree), tree)  # MAYBE convert these to Impossible State error
 
     def parse_stmt(self):
         got = self.lib.parse(self.source, ("rule", "program"))
         logging.debug(got)
         shallower = de_tree(got)
         logging.info(shallower)
-        return self.convert_stmt(shallower)
 
-    def convert_stmt(self, tree) -> Stmt:
-        raise NotImplementedError
+        match shallower:
+            case Parse("program", _s, _e, (*ops, _eof)):
+                return [self.convert_stmt(e) for (e,) in ops]
+            case _:
+                raise RuntimeError("Impossible State")
+
+    def convert_stmt(self, tree: Parse) -> Stmt:
+        logging.debug("convert_expr( %s", tree)
+        match tree:
+            case Parse("exprStmt", _s, _e, (e, ";")):
+                return Expression(self.convert_expr(e))
+            case Parse("funDecl", _s, _e, ("fun", Parse("function", __s, __e, (Parse("IDENTIFIER", _s1, _e1, ident), "(", *params, ")", body)))):
+                name = Token(TT.IDENTIFIER, ident, -99, None)
+                match params:
+                    case ():
+                        names = []
+                    case [[Parse("parameters", _s, _e, (arg0, args))]]:
+                        without_comma = [arg0] + [arg for _comma, arg in args]
+                        names = [Token(TT.IDENTIFIER, e.expr, -99, None) for e in without_comma]
+                    case [[Parse("IDENTIFIER", _s, _e, arg0)]]:
+                        names = [Token(TT.IDENTIFIER, arg0, -99, None)]
+                    case _:
+                        raise RuntimeError("Impossible state")
+                match self.convert_stmt(body):
+                    case Block(statements):
+                        return Function(name, names, statements)
+                    case _:
+                        raise ValueError(body)
+            case Parse("varDecl", _s, _e, ("var", Parse("IDENTIFIER", __s, __e, ident), *eq_value, ";")):
+                name = Token(TT.IDENTIFIER, ident, -99, None)
+                match eq_value:
+                    case [(("=", e),)]:
+                        return Var(name, self.convert_expr(e))
+                    case []:
+                        return Var(name, None)
+                    case _:
+                        raise RuntimeError("Impossible state")
+            case Parse("ifStmt", _s, _e, ("if", "(", cond, ")", true, *false)):
+                return If(self.convert_expr(cond), self.convert_stmt(true), self.convert_stmt(false[0][0][1]) if false else None)
+            case Parse("returnStmt", _s, _e, ("return", *expr, ";")):
+                return Return(fake_token("return"), self.convert_expr(expr[0][0]) if expr else None)
+            case Parse("block", _s, _e, ("{", *decl, "}")):
+                return Block([self.convert_stmt(e) for e in decl[0]]) if decl else Block([])
+            case Parse(rule, _s, _e, e):
+                raise NotImplementedError(rule, e)
+            case _:
+                raise RuntimeError("Impossible state", type(tree), tree)
 
     def error(self, token: Token, message: str):
         """Optionally, for fatal errors raise the error"""

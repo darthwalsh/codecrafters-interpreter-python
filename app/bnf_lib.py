@@ -26,7 +26,7 @@ class Bnf:
       <any char except "\""> like it says on the tin
       "a" "b"              Concatenation is tuple ("concat", "a", "b")
       "a" | "b"            Alternation is frozenset({"a", "b"})
-      "a"?                 Option is tuple ("repeat", 0, 1, "a")
+      "a"?                 Option is tuple ("repeat", 0, 1, "a") MAYBE would make parse tree handler nicer if was Optional<object>/Nonthing enum(could use None, but need to change parse() sentinel)
       "a"*                 Repeat is tuple ("repeat", 0, inf, "a")
       "a"+                 Repeat is tuple ("repeat", 1, inf, "a")
 
@@ -279,11 +279,11 @@ class Lib:
                             combined = (vv,) + typing.cast(tuple[object, ...], vvv) if vv else vvv
                             yield combined, iii
             case ("rule", name):
-                definition = self.bnf[name]
                 literal_text = name.isupper()
-                for e, ii in self.resolve(i, definition, skip_ws=not literal_text):
+                for e, ii in self.resolve(i, self.bnf[name], skip_ws=not literal_text):
                     # Throw away parse tree for UPPERCASE rule
                     subtree = self.text[i:ii] if literal_text else e
+                    # TODO(ident) for IDENTIFIER, don't return if it's a reserved word: `return;` is not an Expression(Var("return"))
                     yield Parse(name, i, ii, subtree), ii
             case ("diff", e, *subtrahends):
                 for s in subtrahends:

@@ -90,7 +90,6 @@ def main(source):
 
     with step("parse_statement") as out:
         stmt = parser.parse_stmt()
-        sys.exit()  # "TODO transform parse tree vs. AST"
         print(AstPrinter().view(stmt), file=out)
 
     with step("run") as out:
