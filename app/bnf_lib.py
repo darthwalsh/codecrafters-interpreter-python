@@ -1,8 +1,9 @@
 import math
 import re
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
+import typing
 
 M_VAR_MAX = 6
 
@@ -11,6 +12,7 @@ def solo(items, default=None):
     if len(items) == 1:
         return next(iter(items))
     return default or items
+
 
 class Bnf:
     """Automatic parse rule based on bnf rule text
@@ -37,7 +39,7 @@ class Bnf:
     def __init__(self, text: str):
         self.text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
         self.i = 0
-        
+
         self.try_take(r"\s+")
         self.expr = self.parse()
         self.take(";")
@@ -85,7 +87,7 @@ class Bnf:
             self.take('"')
             e = self.parseString()
             return range(ord(s), ord(e) + 1)
-        elif name := self.try_take(r'\w+'):
+        elif name := self.try_take(r"\w+"):
             return "rule", name
         elif self.try_take(r'<any char except "\\"">'):
             return ("diff", range(0, 0x10FFFF), '"')
@@ -140,33 +142,52 @@ class Parse:
     end: int
     expr: object
 
+    def __iter__(self):
+        yield self.rule
+        yield self.start
+        yield self.end
+        yield self.expr
+
     def __str__(self):
+        match self.rule:
+            case "IDENTIFIER":
+                return f"_{self.expr}"
+            case "STRING":
+                return repr(self.expr)
+            case "NUMBER":
+                return f"+{self.expr}"
+            case "DIGIT":
+                return f"d{self.expr}"
+            case "EOF":
+                return "<eof>"
+            case _:
+                pass
         if self.rule.isupper():
-            if isinstance(self.expr, str):
-                return self.expr
             raise ValueError(self.expr)
 
         if isinstance(self.expr, tuple):
-            expr = ', '.join(map(str, self.expr))
+            expr = ", ".join(map(str, self.expr))
         else:
             expr = str(self.expr)
         return f"{self.rule}({expr})"
-    
+
     def __repr__(self):
         return str(self)
 
 
-def untuple(o: object):
-    if isinstance(o, tuple):
-        result = []
-        for t in o:
-            t = untuple(t)
-            if t != ():
-                result.append(t)
-        if len(result) == 1:
-            return result[0]
-        return tuple(result)
-    return o
+def de_tree(tree):
+    """Remove unnecessary Parse Tree nodes: have a single-item tuple expr, or Parse node child"""
+    match tree:
+        case Parse(_, _, _, p) if isinstance(p, Parse):
+            return de_tree(p)
+        case Parse(_, _, _, (solo,)):
+            return de_tree(solo)
+        case Parse():
+            return replace(tree, expr=de_tree(tree.expr))
+        case tuple():
+            return tuple(de_tree(e) for e in tree)
+        case _:
+            return tree
 
 
 class Lib:
@@ -184,20 +205,24 @@ class Lib:
                 rule = Bnf(text)
             except Exception as e:
                 raise ValueError(name) from e
-            self.bnf.setdefault(name, []).append(rule.expr)
-        self.bnf["EOF"] = [("$",)]
+            if name in self.bnf:
+                raise ValueError("duplicate", name)
+            self.bnf[name] = rule.expr
+        self.bnf["EOF"] = ("$",)
 
     def parse(self, text: str, expr):
         self.text = text
 
-        results = set()
-        for result, lastI in self.resolve(0, expr, skip_ws=True):
-            if self.ignore_whitespace(lastI) == len(text):
-                results.add(result)
+        result = None
+        for r, end in self.resolve(0, expr, skip_ws=True):
+            if self.ignore_whitespace(end) == len(text):
+                if result:
+                    raise ValueError("ambiguous", result, r)
+                result = r
 
-        if not results:
+        if result is None:
             raise ValueError("no results")
-        return solo(results)
+        return result
 
     def ignore_whitespace(self, i: int) -> int:
         if i + 1 < len(self.text) and self.text[i : i + 2] == "//":
@@ -209,12 +234,27 @@ class Lib:
             return self.ignore_whitespace(i + 1)
         return i
 
-    def resolve(self, i: int, expr, skip_ws) -> Iterator[tuple[object, int]]:  # TODO Iterator[ParseResult]? Or should it be less lazy and return list[ParseResult]?
+    def resolve(self, i: int, expr, skip_ws) -> Iterator[tuple[object, int]]:
+        """Produces the full parse tree with single-element productions, but simple is better than clever.
+        Let another layer figure out the AST.
+
+        MAYBE remove ("diff, and then backtracking not needed?
+        MAYBE just return the first found object -- if backtracking not needed, then can have self.i move forward.
+
+        Returns AST:
+            - "abc" "" - str for str and range
+            - (e1,e2) (e1,) () - tuples for concat and repeat
+            - Parse("rule", ..., name) rule creates Parse: MAYBE could return a different data structure? see split_parse_result but don't literally use tuples, confusing with above
+            - expr - for diff MAYBE remove, hardcode
+            - Parse("_EOF", ..., "") for EOF - MAYBE reconsider return ()?
+
+        Tried a version of this code that produced Parse instead of tuple[object, int].
+        Create the full verbose"""
         if skip_ws:
             i = self.ignore_whitespace(i)
         match expr:
             case str(s):
-                if i < len(self.text) and self.text[i:i+len(s)] == s:
+                if i < len(self.text) and self.text[i : i + len(s)] == s:
                     yield s, i + len(s)
             case range():
                 if i < len(self.text) and ord(self.text[i]) in expr:
@@ -227,7 +267,8 @@ class Lib:
             case ("concat", e, *exprs):
                 for vv, ii in self.resolve(i, e, skip_ws):
                     for vvv, iii in self.resolve(ii, ("concat", *exprs), skip_ws):
-                        yield (vv,) + vvv, iii
+                        combined = (vv,) + typing.cast(tuple[object, ...], vvv) if vv else vvv
+                        yield combined, iii
             case ("repeat", lo, hi, e):
                 if not lo:
                     yield (), i
@@ -235,28 +276,24 @@ class Lib:
                     dec = ("repeat", max(lo - 1, 0), hi - 1, e)
                     for vv, ii in self.resolve(i, e, skip_ws):
                         for vvv, iii in self.resolve(ii, dec, skip_ws):
-                            yield (vv,) + vvv, iii
+                            combined = (vv,) + typing.cast(tuple[object, ...], vvv) if vv else vvv
+                            yield combined, iii
             case ("rule", name):
-                for expr in self.bnf[name]:
-                    literal_text = name.isupper()
-                    for e, ii in self.resolve(i, expr, skip_ws=not literal_text):
-                        e = untuple(e)
-                        if literal_text:
-                            yield Parse(name, i, ii, self.text[i : ii]), ii
-                        elif isinstance(e, Parse):
-                            yield e, ii
-                        else:
-                            yield Parse(name, i, ii, e), ii
+                definition = self.bnf[name]
+                literal_text = name.isupper()
+                for e, ii in self.resolve(i, definition, skip_ws=not literal_text):
+                    # Throw away parse tree for UPPERCASE rule
+                    subtree = self.text[i:ii] if literal_text else e
+                    yield Parse(name, i, ii, subtree), ii
             case ("diff", e, *subtrahends):
                 for s in subtrahends:
-                    for o in self.resolve(i, s, skip_ws):
+                    for _ in self.resolve(i, s, skip_ws):
                         return
-                if not any(
-                    any(self.resolve(i, s, skip_ws)) for s in subtrahends
-                ): # TODO this duplicates above??
+                # MAYBE this if: duplicates the above line??
+                if not any(any(self.resolve(i, s, skip_ws)) for s in subtrahends):
                     yield from self.resolve(i, e, skip_ws)
             case ("$",):
                 if i == len(self.text):
-                    yield "", i
+                    yield Parse("_EOF", i, i, ()), i
             case _:
                 raise ValueError("unknown type:", expr)

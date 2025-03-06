@@ -27,3 +27,6 @@ extend-select = [
     "RUF013", # implicit-optional
     "UP",     # pyupgrade automatically upgrade syntax for newer python versions
 ]
+ignore = [
+    # "E701",   # multiple-statements-on-one-line-colon   # MAYBE stops vscode from fighting case statements on same line
+]

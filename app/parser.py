@@ -1,8 +1,9 @@
 import sys
+import typing
 from collections.abc import Callable
 from contextlib import contextmanager
 
-from app.bnf_lib import Lib, Parse
+from app.bnf_lib import Lib, Parse, de_tree
 from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable
 from app.scanner import Token, char_equal_tokens, char_tokens, keywords
 from app.scanner import TokenType as TT
@@ -293,82 +294,14 @@ extra_tokens = {"/": TT.SLASH}
 all_tokens = char_tokens | char_equal_tokens | with_equal | keywords | extra_tokens
 
 
-def fake_token(c: str):
-    return Token(all_tokens[c], c, -99, None)
-
-
-def convert_stmt(tree) -> Stmt:
-    raise NotImplementedError
-
-
-def convert_expr(tree) -> Expr:
-    print("convert_expr(", tree, file=sys.stderr, flush=True)  # TODONT
-    match tree:
-        case Parse("logic_and" | "logic_or", _s, _e, (left, ops)):
-            expr = convert_expr(left)
-            if not isinstance(ops[1], tuple):
-                # HACK should be Tuple[Tuple[str, Expr], ...], unless there is only one then got untupled to Tuple[str, Expr]? maybe remove this hack
-                ops = (ops,)
-            for op, right in ops:
-                expr = Logical(expr, fake_token(op), convert_expr(right))
-            return expr
-        case Parse("equality" | "comparison" | "term" | "factor", _s, _e, (left, ops)):
-            expr = convert_expr(left)
-            if not isinstance(ops[1], tuple):  # HACK ditto
-                ops = (ops,)
-            for op, right in ops:
-                expr = Binary(expr, fake_token(op), convert_expr(right))
-            return expr
-
-        case Parse("unary", _s, _e, (op, e)):
-            return Unary(fake_token(op), convert_expr(e))
-
-        case Parse("call", _s, _e, (callee, *invokes)):
-            raise NotImplementedError(
-                "TODO the parse tree is wrong -- should NOT be flattening this part of the tree "
-            )
-            e = convert_expr(callee)
-            for _l, *args, _r in invokes:
-                e = Call(e, fake_token(")"), [convert_expr(a) for a in args])
-            return e
-
-        case Parse("primary", _s, _e, "true"):
-            return Literal(True)
-        case Parse("primary", _s, _e, "false"):
-            return Literal(False)
-        case Parse("primary", _s, _e, "Nil"):
-            return Literal(None)
-        case Parse("primary", _s, _e, ("(", e, ")")):
-            return Grouping(convert_expr(e))
-
-        case Parse("NUMBER", _s, _e, e):
-            if not isinstance(e, str):
-                raise ValueError(e)
-            return Literal(float(e))
-        case Parse("STRING", _s, _e, e):
-            if not isinstance(e, str):
-                raise ValueError(e)
-            return Literal(e.strip('"'))
-        case Parse("IDENTIFIER", _s, _e, e):
-            if e in keywords:
-                raise NotConvertible("KeywordError")
-            if not isinstance(e, str):
-                raise ValueError(e)
-            return Variable(Token(TT.IDENTIFIER, e, -99, None))
-        case Parse(rule, _s, _e, e):
-            raise NotImplementedError(rule, e)
-        case set():
-            possible = []
-            for e in tree:
-                try:
-                    possible.append(convert_expr(e))
-                except NotConvertible:
-                    pass
-            if len(possible) == 1:
-                return possible[0]
-            raise RuntimeError("Ambiguous conversion", tree, "->", *possible)
+def fake_token(c: str | Parse):
+    match c:
+        case Parse("_str", _s, _e, s):
+            return fake_token(typing.cast(str, s))
+        case str():
+            return Token(all_tokens[c], c, -99, None)
         case _:
-            raise NotImplementedError(type(tree), tree)
+            raise ValueError(c)
 
 
 class Parser:
@@ -381,9 +314,99 @@ class Parser:
     def parse_expr(self):
         got = self.lib.parse(self.source, ("rule", "expression"))
         print(got)
-        return convert_expr(got)
+        shallower = de_tree(got)
+        print(shallower)
+        return self.convert_expr(shallower)
+
+    def convert_expr(self, tree) -> Expr:
+        print("convert_expr(", tree, file=sys.stderr, flush=True)  # TODO use logging.debug for all print()
+        match tree:
+            case Parse("logic_and" | "logic_or", _s, _e, (left, ops)):
+                expr = self.convert_expr(left)
+                for op, right in ops:
+                    expr = Logical(expr, fake_token(op), self.convert_expr(right))
+                return expr
+            case Parse("equality" | "comparison" | "term" | "factor", _s, _e, (left, ops)):
+                expr = self.convert_expr(left)
+                for op, right in ops:
+                    expr = Binary(expr, fake_token(op), self.convert_expr(right))
+                return expr
+
+            case Parse("unary", _s, _e, (op, e)):
+                return Unary(fake_token(op), self.convert_expr(e))
+
+            case Parse("call", _s, _e, (callee, invokes)):
+                e = self.convert_expr(callee)
+                for _l, *args, _r in invokes:
+                    match args:
+                        case ():
+                            exprs = []
+                        case [[Parse("arguments", _s, _e, (arg0, args))]]:
+                            without_comma = [arg0] + [arg for _comma, arg in args]
+                            exprs = [self.convert_expr(e) for e in without_comma]
+                            if len(exprs) > 255:
+                                self.error(fake_token(args[254][0]), "Can't have more than 255 arguments.")
+                        case [[arg0]]:
+                            exprs = [self.convert_expr(arg0)]
+                        case _:
+                            raise RuntimeError("Impossible state")
+                    e = Call(e, fake_token(")"), exprs)
+                return e
+            case Parse("arguments", _s, _e, _arg):
+                raise RuntimeError("Impossible state:", tree)
+
+            case Parse("primary", _s, _e, "true"):
+                return Literal(True)
+            case Parse("primary", _s, _e, "false"):
+                return Literal(False)
+            case Parse("primary", _s, _e, "Nil"):
+                return Literal(None)
+            case Parse("primary", _s, _e, ("(", e, ")")):
+                return Grouping(self.convert_expr(e))
+
+            case Parse("NUMBER", _s, _e, e):
+                if not isinstance(e, str):
+                    raise ValueError(e)
+                return Literal(float(e))
+            case Parse("STRING", _s, _e, e):
+                if not isinstance(e, str):
+                    raise ValueError(e)
+                return Literal(e.strip('"'))
+            case Parse("IDENTIFIER", _s, _e, e):
+                if e in keywords:
+                    # TODO(ident) too late for this. `true` will parse as primary(_true) || primary("true")) -- maybe use the sorted production rules (list-not-set), and in a tie only take the first?
+                    raise NotConvertible("KeywordError")
+                if not isinstance(e, str):
+                    raise ValueError(e)
+                return Variable(Token(TT.IDENTIFIER, e, -99, None))
+            case Parse(rule, _s, _e, e):
+                raise NotImplementedError(rule, e)
+            case set():
+                possible = []
+                for e in tree:
+                    try:
+                        possible.append(self.convert_expr(e))
+                    except NotConvertible:
+                        pass
+                if len(possible) == 1:
+                    return possible[0]
+                raise RuntimeError("Ambiguous conversion", tree, "->", *possible)
+            case _:
+                raise NotImplementedError(type(tree), tree)
 
     def parse_stmt(self):
         got = self.lib.parse(self.source, ("rule", "program"))
         print(got)
-        return convert_stmt(got)
+        shallower = de_tree(got)
+        print(shallower)
+        return self.convert_stmt(shallower)
+
+    def convert_stmt(self, tree) -> Stmt:
+        raise NotImplementedError
+
+    def error(self, token: Token, message: str):
+        """Optionally, for fatal errors raise the error"""
+        lexeme = f"'{token.lexeme}'" if token.type != TT.EOF else "end"
+
+        self.report(token.line, f" at {lexeme}", message)
+        return ParseError()
