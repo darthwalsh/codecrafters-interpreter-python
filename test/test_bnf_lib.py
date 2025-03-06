@@ -31,7 +31,7 @@ class TestBnf(unittest.TestCase):
         self.assertEqual(bnf("statement"), ("rule", "statement"))
 
     def test_special(self):
-        self.assertEqual(bnf('<any char except "\\"">'), ("diff", range(0, 0x10FFFF), '"'))
+        self.assertEqual(bnf('<any char except "\\"">'), ("non_double_quote",))
 
     def test_or(self):
         self.assertEqual(bnf('"0" | "9"'), {"0", "9"})
@@ -186,19 +186,6 @@ class TestLib(unittest.TestCase):
         self.assertIn("no results", str(e_info.exception))
         with self.assertRaises(ValueError) as e_info:
             parse("a", ("concat", ("rule", "EOF"), "a"))
-        self.assertIn("no results", str(e_info.exception))
-
-    def test_diff(self):
-        diff = ("diff", range(0x20, 0x7F), "0", range(0x35, 0x3A))
-
-        self.assertEqual(parse("1", diff), "1")
-
-        with self.assertRaises(ValueError) as e_info:
-            parse("0", diff)
-        self.assertIn("no results", str(e_info.exception))
-
-        with self.assertRaises(ValueError) as e_info:
-            parse("5", diff)
         self.assertIn("no results", str(e_info.exception))
 
     def test_tree_repeat(self):

@@ -26,14 +26,14 @@ class Bnf:
       "abc\""              Text string is str 'abc"' (backslash can escape double quote)
       "0" ... "9"          Character range is exclusive range(0x30, 0x3A)
       term                 Production is tuple ("rule", "term")
-      <any char except "\""> like it says on the tin
       "a" "b"              Concatenation is tuple ("concat", "a", "b")
       "a" | "b"            Alternation is frozenset({"a", "b"})
       "a"?                 Option is tuple ("repeat", 0, 1, "a") MAYBE(opt) would make parse tree handler nicer if was Optional<object>/Nothing enum(could use None, but need to change parse() sentinel)
       "a"*                 Repeat is tuple ("repeat", 0, inf, "a")
       "a"+                 Repeat is tuple ("repeat", 1, inf, "a")
+      <any char except "\""> ("non_double_quote",)
 
-      # EOF                End of whole text stream is ("$",)
+      # EOF                End of whole text stream is ("EOF",)
       # UPPERCASE rule     Returns substring, including whitespace and //comment rule
       # IDENTIFIER         has special case, not to return reserved words. In theory, could add rules to BNF:
                            ALPHA ( ALPHA | DIGIT )* - "nil" - "true" - "return" ... etc but seems too messy
@@ -95,7 +95,7 @@ class Bnf:
         elif name := self.try_take(r"\w+"):
             return "rule", name
         elif self.try_take(r'<any char except "\\"">'):
-            return ("diff", range(0, 0x10FFFF), '"')
+            return ("non_double_quote",)
         elif self.try_take(r"\("):
             parens = self.parse()
             self.take(r"\)")
@@ -213,7 +213,7 @@ class Lib:
             if name in self.bnf:
                 raise ValueError("duplicate", name)
             self.bnf[name] = rule.expr
-        self.bnf["EOF"] = ("$",)
+        self.bnf["EOF"] = ("EOF",)
 
     def parse(self, text: str, expr):
         self.text = text
@@ -244,19 +244,18 @@ class Lib:
         Let another layer figure out the AST.
 
 
-        MAYBE remove ("diff, and then backtracking not needed?
+        MAYBE removed ("diff, so now is backtracking not needed???
         MAYBE just return the first found object -- if backtracking not needed, then can have self.i move forward.
 
         Returns AST:
             - "abc" "" - str for str and range
             - (e1,e2) (e1,) () - tuples for concat and repeat
-            - Parse("rule", ..., name) rule creates Parse: MAYBE could return a different data structure? see split_parse_result but don't literally use tuples, confusing with above
-            - expr - for diff MAYBE remove, hardcode
-            - Parse("_EOF", ..., "") for EOF - MAYBE reconsider return ()?
+            - Parse("rule", ..., name) rule creates Parse: MAYBE could return a simpler data structure? see split_parse_result but don't literally use tuples, confusing with above
+            - () for EOF
 
         Tried a version of this code that produced Parse instead of tuple[object, int].
         Definitely should not flatten ((a, b), c) to (a, b, c) because that will end up losing the tree structure.
-        MAYBE(opt) BNF like a b c? d? parses to one of 
+        MAYBE(opt) BNF like a b c? d? parses to one of
             (a, b)
               or (a, b, (c,)) which is impossible to destructure."""
         if skip_ws:
@@ -297,15 +296,11 @@ class Lib:
                     if name == "IDENTIFIER" and subtree in keywords:
                         continue
                     yield Parse(name, i, ii, subtree), ii
-            case ("diff", e, *subtrahends):
-                for s in subtrahends:
-                    for _ in self.resolve(i, s, skip_ws):
-                        return
-                # MAYBE this if: duplicates the above line??
-                if not any(any(self.resolve(i, s, skip_ws)) for s in subtrahends):
-                    yield from self.resolve(i, e, skip_ws)
-            case ("$",):
+            case ("non_double_quote",):
+                if i < len(self.text) and self.text[i] != '"':
+                    yield self.text[i], i + 1
+            case ("EOF",):
                 if i == len(self.text):
-                    yield Parse("_EOF", i, i, ()), i
+                    yield (), i
             case _:
                 raise ValueError("unknown type:", expr)

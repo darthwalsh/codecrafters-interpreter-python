@@ -290,14 +290,8 @@ extra_tokens = {"/": TT.SLASH}
 all_tokens = char_tokens | char_equal_tokens | with_equal | keywords | extra_tokens
 
 
-def fake_token(c: str | Parse):
-    match c:
-        case Parse("_str", _s, _e, s):
-            return fake_token(typing.cast(str, s))
-        case str():
-            return Token(all_tokens[c], c, -99, None)  # TODO fix the -99 line numbers
-        case _:
-            raise ValueError(c)
+def fake_token(c: str):
+    return Token(all_tokens[c], c, -99, None)  # TODO fix the -99 line numbers
 
 
 class Parser:
@@ -440,7 +434,7 @@ class Parser:
             case Parse("exprStmt", _s, _e, (e, ";")):
                 return Expression(self.convert_expr(e))
             case Parse("forStmt", _s, _e, ("for", "(", init, cond, ";", incr, ")", body)):
-                raise NotImplementedError(init, "|||", cond, "|||", incr, "|||", body) # TODO implement
+                raise NotImplementedError(init, "|||", cond, "|||", incr, "|||", body)  # TODO implement
             case Parse("ifStmt", _s, _e, ("if", "(", cond, ")", true, *false)):
                 return If(
                     self.convert_expr(cond),
