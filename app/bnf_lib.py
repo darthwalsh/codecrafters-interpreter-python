@@ -1,3 +1,4 @@
+import logging
 import math
 import re
 from collections.abc import Iterator
@@ -26,7 +27,7 @@ class Bnf:
       <any char except "\""> like it says on the tin
       "a" "b"              Concatenation is tuple ("concat", "a", "b")
       "a" | "b"            Alternation is frozenset({"a", "b"})
-      "a"?                 Option is tuple ("repeat", 0, 1, "a") MAYBE would make parse tree handler nicer if was Optional<object>/Nonthing enum(could use None, but need to change parse() sentinel)
+      "a"?                 Option is tuple ("repeat", 0, 1, "a") MAYBE(opt) would make parse tree handler nicer if was Optional<object>/Nothing enum(could use None, but need to change parse() sentinel)
       "a"*                 Repeat is tuple ("repeat", 0, inf, "a")
       "a"+                 Repeat is tuple ("repeat", 1, inf, "a")
 
@@ -238,6 +239,7 @@ class Lib:
         """Produces the full parse tree with single-element productions, but simple is better than clever.
         Let another layer figure out the AST.
 
+
         MAYBE remove ("diff, and then backtracking not needed?
         MAYBE just return the first found object -- if backtracking not needed, then can have self.i move forward.
 
@@ -249,9 +251,13 @@ class Lib:
             - Parse("_EOF", ..., "") for EOF - MAYBE reconsider return ()?
 
         Tried a version of this code that produced Parse instead of tuple[object, int].
-        Create the full verbose"""
+        Definitely should not flatten ((a, b), c) to (a, b, c) because that will end up losing the tree structure.
+        MAYBE(opt) BNF like a b c? d? parses to one of 
+            (a, b)
+              or (a, b, (c,)) which is impossible to destructure."""
         if skip_ws:
             i = self.ignore_whitespace(i)
+        logging.debug("resolve(%s %s", i, expr)
         match expr:
             case str(s):
                 if i < len(self.text) and self.text[i : i + len(s)] == s:

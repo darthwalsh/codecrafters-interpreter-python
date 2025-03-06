@@ -71,6 +71,19 @@ class TestBnf(unittest.TestCase):
         self.assertIn("'", str(e_info.exception))
         self.assertIn("expected", str(e_info.exception))
 
+    def test_compose_concat_optional(self):
+        # MAYBE(opt) would be nice if parse was either ("A", None) or ("A", ("a", "b"))
+        optional = bnf('"A" ("a" "b")?')
+        self.assertEqual(parse("Aab", optional), ("A", (("a", "b"),)))
+        self.assertEqual(parse("A", optional), ("A",))
+
+        # MAYBE(opt) Would be nice if each parse tree was 4 long
+        concat = bnf('"a" "b"? "c" "d"?')
+        self.assertEqual(parse("ac", concat), ("a", "c"))
+        self.assertEqual(parse("abc", concat), ("a", ("b",), "c"))
+        self.assertEqual(parse("abcd", concat), ("a", ("b",), "c", ("d",)))
+        self.assertEqual(parse("acd", concat), ("a", "c", ("d",)))
+
     def test_load(self):
         defs = Lib().bnf
         self.assertIn("STRING", defs)
@@ -210,4 +223,6 @@ def split_parse_result(pr: Parse | object):
 
 
 if __name__ == "__main__":
+    # import logging
+    # logging.basicConfig(level=logging.DEBUG)
     unittest.main()

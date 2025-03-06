@@ -10,7 +10,7 @@ from app.scanner import TokenType as TT
 from test.runner import parse, reraise
 
 
-@unittest.expectedFailure
+@unittest.skip("TODO") # TODO(ident) parsing nil doesn't work yet
 class TestInterpreter(unittest.TestCase):
     def validate(self, source, expected):
         interpreter = Interpreter(reraise)

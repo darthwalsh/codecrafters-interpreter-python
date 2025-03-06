@@ -404,16 +404,24 @@ class Parser:
 
         match shallower:
             case Parse("program", _s, _e, (*ops, _eof)):
-                return [self.convert_stmt(e) for (e,) in ops]
+                return [self.convert_stmt(e) for stmts in ops for e in stmts]
             case _:
                 raise RuntimeError("Impossible State")
 
     def convert_stmt(self, tree: Parse) -> Stmt:
         logging.debug("convert_expr( %s", tree)
         match tree:
-            case Parse("exprStmt", _s, _e, (e, ";")):
-                return Expression(self.convert_expr(e))
-            case Parse("funDecl", _s, _e, ("fun", Parse("function", __s, __e, (Parse("IDENTIFIER", _s1, _e1, ident), "(", *params, ")", body)))):
+            case Parse(
+                "funDecl",
+                _s,
+                _e,
+                (
+                    "fun",
+                    Parse(
+                        "function", __s, __e, (Parse("IDENTIFIER", _s1, _e1, ident), "(", *params, ")", body)
+                    ),
+                ),
+            ):
                 name = Token(TT.IDENTIFIER, ident, -99, None)
                 match params:
                     case ():
@@ -439,8 +447,20 @@ class Parser:
                         return Var(name, None)
                     case _:
                         raise RuntimeError("Impossible state")
+            case Parse("exprStmt", _s, _e, (e, ";")):
+                return Expression(self.convert_expr(e))
+            case Parse("forStmt", _s, _e, ("for", "(", init, cond, ";", incr, ")", body)):
+                raise NotImplementedError(init, "|||", cond, "|||", incr, "|||", body) # TODO implement
             case Parse("ifStmt", _s, _e, ("if", "(", cond, ")", true, *false)):
-                return If(self.convert_expr(cond), self.convert_stmt(true), self.convert_stmt(false[0][0][1]) if false else None)
+                return If(
+                    self.convert_expr(cond),
+                    self.convert_stmt(true),
+                    self.convert_stmt(false[0][0][1]) if false else None,
+                )
+            case Parse("printStmt", _s, _e, ("print", e, ";")):
+                return Print(self.convert_expr(e))
+            case Parse("whileStmt", _s, _e, ("while", "(", cond, ")", statement)):
+                return While(self.convert_expr(cond), self.convert_stmt(statement))
             case Parse("returnStmt", _s, _e, ("return", *expr, ";")):
                 return Return(fake_token("return"), self.convert_expr(expr[0][0]) if expr else None)
             case Parse("block", _s, _e, ("{", *decl, "}")):

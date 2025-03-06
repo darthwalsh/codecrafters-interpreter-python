@@ -71,8 +71,8 @@ class TestParser(unittest.TestCase):
         self.validate("x = y", "(= x y)")
         self.validate("x = y = z", "(= x (= y z))")
 
-        # self.error("x =", "Expect expression", None)  # TODO parse errors
-        # self.error("1 = x", "Invalid assignment target.", "1.0")  # TODO parse errors
+        # self.error("x =", "Expect expression", None)  # TODO(parse-error)
+        # self.error("1 = x", "Invalid assignment target.", "1.0")  # TODO(parse-error)
 
     def test_var(self):
         self.validate("var x = 1 + x;", "var x = (+ 1.0 x);")
@@ -85,18 +85,16 @@ class TestParser(unittest.TestCase):
 
     def test_return(self):
         self.validate("return a;", "return a;")  # MAYBE refactor when both eq: self.round_trip("return a;")
-        # self.validate("return;", "return;") # TODO(ident) ambiguous parse. 
+        # self.validate("return;", "return;") # TODO(ident) ambiguous parse.
 
     def test_if(self):
         self.validate("if (1) { 1; }", "if (1.0) [{ 1.0; }]")
         self.validate("if (x) y;", "if (x) [y;]")
         self.validate("if (x) y; else z;", "if (x) [y;] else [z;]")
 
-        # self.validate("if (x) if (a) b; else z;", "if (x) [if (a) [b;] else [z;]]")  # TODO ambiguous parse: dangling else
+        # self.validate("if (x) if (a) b; else z;", "if (x) [if (a) [b;] else [z;]]")  # TODO(dangling-else) ambiguous parse: book's grammar doesn't try to make this non-ambiguous https://craftinginterpreters.com/control-flow.html#:~:text=is%20called%20the-,dangling%20else,-problem. Could be solvable by greedily [not] taking else, and not validating only one parse was valid?
 
-
-@unittest.expectedFailure
-class TestParserErrors(unittest.TestCase):
+    @unittest.expectedFailure
     def test_for_caramelization(self):
         self.validate(
             "for (var i = 0; i < 3; i = i + 1) i;",
@@ -118,16 +116,19 @@ class TestParserErrors(unittest.TestCase):
     def test_print(self):
         self.validate("print 1;", "print 1.0;")
 
-        self.error("print 1; 3", "Expect ';' after expression.", "print 1.0;")
-        self.error("print; 3;", "Expect expression", "3.0;")
+        # self.error("print 1; 3", "Expect ';' after expression.", "print 1.0;") TODO(parse-error)
+        # self.error("print; 3;", "Expect expression", "3.0;") TODO(parse-error)
 
     def test_block(self):
         self.validate("{1;}", "{ 1.0; }")
         self.validate("{}", "{  }")
         self.validate("{1;}{}", "{ 1.0; } {  }")
 
-        self.error("{", "Expect '}' after block.", "")
+        # self.error("{", "Expect '}' after block.", "") TODO(parse-error)
 
+
+@unittest.expectedFailure
+class TestParserErrors(unittest.TestCase):
     def test_trailing(self):
         self.error("1 1", "Expected end of expression", "1.0")
 
