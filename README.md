@@ -48,7 +48,8 @@ In this challenge you'll build an interpreter for [Lox](https://craftinginterpre
 - [`test_environment`](test/test_environment.py) is an Environment wrapper allowing for `wrap.a = 1` to set `"a"` in the env.
 	- Also context manager: `with self.parent(a=2).child() as (p, c): p.a = 1; c.assign("a", 2)` 
 	-  Use `**kw_args`  for expected final parent/child env state instead of literal dicts.
-`
+- `export LOGGING=DEBUG` to see debug logs
+
 ## Bugs
 - [ ] Have yet to implement [Chapter 11](https://craftinginterpreters.com/resolving-and-binding.html) onwards
 - [ ] main script errors out if there are compiler/runtime 9000 errors.

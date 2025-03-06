@@ -1,4 +1,4 @@
-import sys
+import logging
 import typing
 from collections.abc import Callable
 from contextlib import contextmanager
@@ -313,13 +313,13 @@ class Parser:
 
     def parse_expr(self):
         got = self.lib.parse(self.source, ("rule", "expression"))
-        print(got)
+        logging.debug(got)
         shallower = de_tree(got)
-        print(shallower)
+        logging.info(shallower)
         return self.convert_expr(shallower)
 
     def convert_expr(self, tree) -> Expr:
-        print("convert_expr(", tree, file=sys.stderr, flush=True)  # TODO use logging.debug for all print()
+        logging.debug("convert_expr( %s", tree)
         match tree:
             case Parse("logic_and" | "logic_or", _s, _e, (left, ops)):
                 expr = self.convert_expr(left)
@@ -396,9 +396,9 @@ class Parser:
 
     def parse_stmt(self):
         got = self.lib.parse(self.source, ("rule", "program"))
-        print(got)
+        logging.debug(got)
         shallower = de_tree(got)
-        print(shallower)
+        logging.info(shallower)
         return self.convert_stmt(shallower)
 
     def convert_stmt(self, tree) -> Stmt:

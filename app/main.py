@@ -1,3 +1,5 @@
+import logging
+import os
 import sys
 from contextlib import contextmanager
 
@@ -5,6 +7,10 @@ from app.ast import AstPrinter
 from app.interpreter import Interpreter
 from app.parser import Parser
 from app.scanner import Scanner
+
+logging.basicConfig(
+    format="%(levelname)8s %(asctime)s %(message)s", level=os.environ.get("LOGLEVEL", "INFO")
+)
 
 LEXICAL_ERROR_CODE = 65
 RUNTIME_ERROR_CODE = 70
