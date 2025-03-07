@@ -96,7 +96,6 @@ class TestParser(unittest.TestCase):
 
         # self.validate("if (x) if (a) b; else z;", "if (x) [if (a) [b;] else [z;]]")  # TODO(dangling-else) ambiguous parse: book's grammar doesn't try to make this non-ambiguous https://craftinginterpreters.com/control-flow.html#:~:text=is%20called%20the-,dangling%20else,-problem. Could be solvable by greedily [not] taking else, and not validating only one parse was valid?
 
-    @unittest.expectedFailure
     def test_for_caramelization(self):
         self.validate(
             "for (var i = 0; i < 3; i = i + 1) i;",

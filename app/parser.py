@@ -416,8 +416,17 @@ class Parser:
                         raise RuntimeError("Impossible state")
             case Parse("exprStmt", (e, ";")):
                 return Expression(self.convert_expr(e))
-            case Parse("forStmt", ("for", "(", init, cond, ";", incr, ")", body)):
-                raise NotImplementedError(init, "|||", cond, "|||", incr, "|||", body)  # TODO implement
+            case Parse("forStmt", ("for", "(", init, cond, ";", incr, ")", b)):
+                initializer = self.convert_stmt(init) if init != ";" else None
+                condition = self.convert_expr(cond) if cond else Literal(True)
+                increment = self.convert_expr(incr) if incr else None
+                body = self.convert_stmt(b)
+                if increment:
+                    body = Block([body, Expression(increment)])
+                body = While(condition, body)
+                if initializer:
+                    body = Block([initializer, body])
+                return body
             case Parse("ifStmt", ("if", "(", cond, ")", true, false)):
                 return If(
                     self.convert_expr(cond),

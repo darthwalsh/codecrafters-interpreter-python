@@ -194,7 +194,6 @@ counter();
 
         self.runtime_error("return 1;", "Tried to return '1' outside function.")
 
-    @unittest.skip("For loop not implemented")  # TODO For loop not implemented"
     def test_while(self):
         self.validate_print("var x = 0; while (x < 3) { x = x + 1; print x; }", "1", "2", "3")
         self.validate_print("var x = 0; while (x < 3) { print x = x + 1; }", "1", "2", "3")

@@ -46,7 +46,7 @@ class TestE2E(unittest.TestCase):
         )
         self.assertIn("Unknown command: foobar\n", err)
 
-    @unittest.expectedFailure  # TODO clean up all expectedFailure and SkipTest and @unittest.skip
+    @unittest.expectedFailure  # TODO clean up all expectedFailure and SkipTest
     def test_tokenize(self):
         self.check("tokenize", "1 nil", 0, "NUMBER 1 1.0\nNIL nil null\nEOF  null")
 
