@@ -310,29 +310,29 @@ class Parser:
     def convert_expr(self, tree: Ast) -> Expr:
         logging.debug("convert_expr( %s", tree)
         match tree:
-            case Parse("assignment", _s, _e, (Parse("IDENTIFIER", __s, __e, str(ident)), _eq, value)):
+            case Parse("assignment", (Parse("IDENTIFIER", str(ident)), _eq, value)):
                 return Assign(Token(TT.IDENTIFIER, ident, -99, None), self.convert_expr(value))
-            case Parse("logic_and" | "logic_or", _s, _e, (left, ops)):
+            case Parse("logic_and" | "logic_or", (left, ops)):
                 expr = self.convert_expr(left)
                 for op, right in ops:
                     expr = Logical(expr, fake_token(op), self.convert_expr(right))
                 return expr
-            case Parse("equality" | "comparison" | "term" | "factor", _s, _e, (left, ops)):
+            case Parse("equality" | "comparison" | "term" | "factor", (left, ops)):
                 expr = self.convert_expr(left)
                 for op, right in ops:
                     expr = Binary(expr, fake_token(op), self.convert_expr(right))
                 return expr
 
-            case Parse("unary", _s, _e, (op, e)):
+            case Parse("unary", (op, e)):
                 return Unary(fake_token(op), self.convert_expr(e))
 
-            case Parse("call", _s, _e, (callee, invokes)):
+            case Parse("call", (callee, invokes)):
                 e = self.convert_expr(callee)
                 for _l, args, _r in invokes:
                     match args:
                         case None:
                             exprs = []
-                        case Parse("arguments", _s, _e, (arg0, args)):
+                        case Parse("arguments", (arg0, args)):
                             without_comma = [arg0] + [arg for _comma, arg in args]
                             exprs = [self.convert_expr(e) for e in without_comma]
                             if len(exprs) > 255:
@@ -343,23 +343,23 @@ class Parser:
                             raise RuntimeError("Impossible state")
                     e = Call(e, fake_token(")"), exprs)
                 return e
-            case Parse("arguments", _s, _e, _arg):
+            case Parse("arguments", _arg):
                 raise RuntimeError("Impossible state:", tree)
 
-            case Parse("primary", _s, _e, "true"):
+            case Parse("primary", "true"):
                 return Literal(True)
-            case Parse("primary", _s, _e, "false"):
+            case Parse("primary", "false"):
                 return Literal(False)
-            case Parse("primary", _s, _e, "nil"):
+            case Parse("primary", "nil"):
                 return Literal(None)
-            case Parse("primary", _s, _e, ("(", e, ")")):
+            case Parse("primary", ("(", e, ")")):
                 return Grouping(self.convert_expr(e))
 
-            case Parse("NUMBER", _s, _e, str(e)):
+            case Parse("NUMBER", str(e)):
                 return Literal(float(e))
-            case Parse("STRING", _s, _e, str(e)):
+            case Parse("STRING", str(e)):
                 return Literal(e.strip('"'))
-            case Parse("IDENTIFIER", _s, _e, str(e)):
+            case Parse("IDENTIFIER", str(e)):
                 return Variable(Token(TT.IDENTIFIER, e, -99, None))
             case _:
                 raise RuntimeError("Impossible state", type(tree), tree)
@@ -374,7 +374,7 @@ class Parser:
 
     def convert_stmts(self, stmts: Parse):
         match stmts:
-            case Parse("program", _s, _e, (*ops, _eof)):
+            case Parse("program", (*ops, _eof)):
                 return [self.convert_stmt(e) for stmts in ops for e in stmts]
             case _:
                 raise RuntimeError("Impossible state")
@@ -384,26 +384,19 @@ class Parser:
         match tree:
             case Parse(
                 "funDecl",
-                _s,
-                _e,
                 (
                     "fun",
-                    Parse(
-                        "function",
-                        __s,
-                        __e,
-                        (Parse("IDENTIFIER", _s1, _e1, str(ident)), "(", params, ")", body),
-                    ),
+                    Parse("function", (Parse("IDENTIFIER", str(ident)), "(", params, ")", body)),
                 ),
             ):
                 name = Token(TT.IDENTIFIER, ident, -99, None)
                 match params:
                     case None:
                         names = []
-                    case Parse("parameters", _s, _e, (arg0, args)):
+                    case Parse("parameters", (arg0, args)):
                         without_comma = [arg0] + [arg for _comma, arg in args]
                         names = [Token(TT.IDENTIFIER, e.expr, -99, None) for e in without_comma]
-                    case Parse("IDENTIFIER", _s, _e, str(arg0)):
+                    case Parse("IDENTIFIER", str(arg0)):
                         names = [Token(TT.IDENTIFIER, arg0, -99, None)]
                     case _:
                         raise RuntimeError("Impossible state")
@@ -412,7 +405,7 @@ class Parser:
                         return Function(name, names, statements)
                     case _:
                         raise ValueError(body)
-            case Parse("varDecl", _s, _e, ("var", Parse("IDENTIFIER", __s, __e, str(ident)), eq_value, ";")):
+            case Parse("varDecl", ("var", Parse("IDENTIFIER", str(ident)), eq_value, ";")):
                 name = Token(TT.IDENTIFIER, ident, -99, None)
                 match eq_value:
                     case None:
@@ -421,23 +414,23 @@ class Parser:
                         return Var(name, self.convert_expr(e))
                     case _:
                         raise RuntimeError("Impossible state")
-            case Parse("exprStmt", _s, _e, (e, ";")):
+            case Parse("exprStmt", (e, ";")):
                 return Expression(self.convert_expr(e))
-            case Parse("forStmt", _s, _e, ("for", "(", init, cond, ";", incr, ")", body)):
+            case Parse("forStmt", ("for", "(", init, cond, ";", incr, ")", body)):
                 raise NotImplementedError(init, "|||", cond, "|||", incr, "|||", body)  # TODO implement
-            case Parse("ifStmt", _s, _e, ("if", "(", cond, ")", true, false)):
+            case Parse("ifStmt", ("if", "(", cond, ")", true, false)):
                 return If(
                     self.convert_expr(cond),
                     self.convert_stmt(true),
                     self.convert_stmt(false[1]) if false else None,
                 )
-            case Parse("printStmt", _s, _e, ("print", e, ";")):
+            case Parse("printStmt", ("print", e, ";")):
                 return Print(self.convert_expr(e))
-            case Parse("whileStmt", _s, _e, ("while", "(", cond, ")", statement)):
+            case Parse("whileStmt", ("while", "(", cond, ")", statement)):
                 return While(self.convert_expr(cond), self.convert_stmt(statement))
-            case Parse("returnStmt", _s, _e, ("return", expr, ";")):
+            case Parse("returnStmt", ("return", expr, ";")):
                 return Return(fake_token("return"), self.convert_expr(expr) if expr else None)
-            case Parse("block", _s, _e, ("{", *decl, "}")):
+            case Parse("block", ("{", *decl, "}")):
                 return Block([self.convert_stmt(e) for e in decl[0]]) if decl else Block([])
             case _:
                 raise RuntimeError("Impossible state", type(tree), tree)

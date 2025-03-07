@@ -97,24 +97,24 @@ class TestBnf(unittest.TestCase):
 
     def test_load_bad(self):
         with self.assertRaises(ValueError) as e_info:
-            Lib().load_production_rules('CUSTOM → abc')
+            Lib().load_production_rules("CUSTOM → abc")
         self.assertIn("CUSTOM", str(e_info.exception))
 
 
 class TestDeTree(unittest.TestCase):
     def test_de_tree(self):
         s = "abc"
-        p = Parse("IDENTIFIER", 0, 3, s)
-        unary = Parse("unary", 0, 0, p)
+        p = Parse("IDENTIFIER", s)
+        unary = Parse("unary", p)
         self.assertEqual(de_tree(s), s)
         self.assertEqual(de_tree((s,)), (s,))
 
         self.assertEqual(de_tree(unary), p)
-        self.assertEqual(de_tree(Parse("unary", 0, 0, (p,))), p)
-        self.assertEqual(de_tree(Parse("unary", 0, 0, ())), Parse("unary", 0, 0, ()))
-        self.assertEqual(de_tree(Parse("unary", 0, 0, (p, p))), Parse("unary", 0, 0, (p, p)))
+        self.assertEqual(de_tree(Parse("unary", (p,))), p)
+        self.assertEqual(de_tree(Parse("unary", ())), Parse("unary", ()))
+        self.assertEqual(de_tree(Parse("unary", (p, p))), Parse("unary", (p, p)))
 
-        call_with_list = Parse("call", 0, 0, ["list type doesn't unpack unary", unary])
+        call_with_list = Parse("call", ["list type doesn't unpack unary", unary])
         self.assertEqual(de_tree(call_with_list), call_with_list)
 
 
@@ -167,25 +167,25 @@ class TestLib(unittest.TestCase):
         self.assertEqual(parse("aaa", ("repeat", 3, 3, "a")), tuple("aaa"))
 
     def test_rules(self):
-        self.assertEqual(parse("x2A", ("rule", "IDENTIFIER")), Parse("IDENTIFIER", 0, 3, "x2A"))
+        self.assertEqual(parse("x2A", ("rule", "IDENTIFIER")), Parse("IDENTIFIER", "x2A"))
 
     def test_identifier_hack(self):
         with self.assertRaises(ValueError) as e_info:
             parse("nil", ("rule", "IDENTIFIER"))
         self.assertIn("no results", str(e_info.exception))
 
-        self.assertEqual(parse("nil", ("rule", "primary")), Parse("primary", 0, 3, "nil"))
+        self.assertEqual(parse("nil", ("rule", "primary")), Parse("primary", "nil"))
 
-        self.assertEqual(parse("nil2", ("rule", "IDENTIFIER")), Parse("IDENTIFIER", 0, 4, "nil2"))
+        self.assertEqual(parse("nil2", ("rule", "IDENTIFIER")), Parse("IDENTIFIER", "nil2"))
 
     def test_white_space(self):
         self.assertEqual(parse(" c", "c"), "c")
         self.assertEqual(parse("c ", "c"), "c")
         self.assertEqual(parse("c c", ("concat", "c", "c")), tuple("cc"))
 
-        self.assertEqual(parse('"AB"', ("rule", "STRING")), Parse("STRING", 0, 4, '"AB"'))
-        self.assertEqual(parse('" B"', ("rule", "STRING")), Parse("STRING", 0, 4, '" B"'))
-        self.assertEqual(parse('"A "', ("rule", "STRING")), Parse("STRING", 0, 4, '"A "'))
+        self.assertEqual(parse('"AB"', ("rule", "STRING")), Parse("STRING", '"AB"'))
+        self.assertEqual(parse('" B"', ("rule", "STRING")), Parse("STRING", '" B"'))
+        self.assertEqual(parse('"A "', ("rule", "STRING")), Parse("STRING", '"A "'))
 
         self.assertEqual(parse("c//COM", "c"), "c")
         self.assertEqual(parse("c //COM\nc", ("concat", "c", "c")), tuple("cc"))
@@ -193,7 +193,7 @@ class TestLib(unittest.TestCase):
     def test_end(self):
         self.assertEqual(
             parse("a", ("concat", "a", ("rule", "EOF"))),
-            ("a", Parse("EOF", 1, 1, "")),
+            ("a", Parse("EOF", "")),
         )
 
         with self.assertRaises(ValueError) as e_info:
@@ -205,22 +205,28 @@ class TestLib(unittest.TestCase):
 
     def test_tree_repeat(self):
         self.assertEqual(
-            split_parse_result(parse("AB", ("repeat", 2, 2, ("rule", "IDENTIFIER")))),
-            (("IDENTIFIER", "A"), ("IDENTIFIER", "B")),
+            parse("AB", ("repeat", 2, 2, ("rule", "IDENTIFIER"))),
+            (Parse("IDENTIFIER", "A"), Parse("IDENTIFIER", "B")),
         )
         self.assertEqual(
-            split_parse_result(parse("ABCD", ("repeat", 4, 4, ("rule", "ALPHA")))),
-            (("ALPHA", "A"), ("ALPHA", "B"), ("ALPHA", "C"), ("ALPHA", "D")),
+            parse("ABCD", ("repeat", 4, 4, ("rule", "ALPHA"))),
+            (Parse("ALPHA", "A"), Parse("ALPHA", "B"), Parse("ALPHA", "C"), Parse("ALPHA", "D")),
         )
 
     def test_tree_rule(self):
         self.assertEqual(
-            split_parse_result(de_tree(parse("1+2", ("rule", "term")))),
-            ("term", (("NUMBER", "1"), (("+", ("NUMBER", "2")),))),
+            de_tree(parse("1+2", ("rule", "term"))),
+            Parse("term", (Parse("NUMBER", "1"), (("+", Parse("NUMBER", "2")),))),
         )
         self.assertEqual(
-            split_parse_result(de_tree(parse("1+2*3", ("rule", "term")))),
-            ("term", (("NUMBER", "1"), (("+", ("factor", (("NUMBER", "2"), (("*", ("NUMBER", "3")),)))),))),
+            de_tree(parse("1+2*3", ("rule", "term"))),
+            Parse(
+                "term",
+                (
+                    Parse("NUMBER", "1"),
+                    (("+", Parse("factor", (Parse("NUMBER", "2"), (("*", Parse("NUMBER", "3")),)))),),
+                ),
+            ),
         )
 
     def test_bad_expr(self):
@@ -240,15 +246,6 @@ class TestParse(unittest.TestCase):
         self.validate_str("1", "+1")
         self.validate_str('"ab"', '"ab"')
         self.validate_str("nil", "primary(nil)")
-
-
-def split_parse_result(pr: Parse | object):
-    # MAYBE refactor Parse to not have start/end, and then this function doesn't need to exist
-    if isinstance(pr, tuple):
-        return tuple(split_parse_result(p) for p in pr)
-    if isinstance(pr, Parse):
-        return pr.rule, split_parse_result(pr.expr)
-    return pr
 
 
 if __name__ == "__main__":

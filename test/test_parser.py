@@ -130,19 +130,19 @@ class TestParser(unittest.TestCase):
 
     def test_impossible(self):
         with self.assertRaises(RuntimeError) as e_info:
-            Parser("source", lambda *_: None).convert_expr(Parse("IDENTIFIER", 0, 1, 1))
+            Parser("source", lambda *_: None).convert_expr(Parse("IDENTIFIER", 1))
         self.assertIn("Impossible state", str(e_info.exception))
 
         with self.assertRaises(RuntimeError) as e_info:
-            Parser("source", lambda *_: None).convert_expr(Parse("arguments", 0, 1, 1))
+            Parser("source", lambda *_: None).convert_expr(Parse("arguments", 1))
         self.assertIn("Impossible state", str(e_info.exception))
 
         with self.assertRaises(RuntimeError) as e_info:
-            Parser("source", lambda *_: None).convert_stmt(Parse("typo", 0, 1, 1))
+            Parser("source", lambda *_: None).convert_stmt(Parse("typo", 1))
         self.assertIn("Impossible state", str(e_info.exception))
 
         with self.assertRaises(RuntimeError) as e_info:
-            Parser("source", lambda *_: None).convert_stmts(Parse("convert_stmts", 0, 1, None))
+            Parser("source", lambda *_: None).convert_stmts(Parse("convert_stmts", None))
         self.assertIn("Impossible state", str(e_info.exception))
 
 

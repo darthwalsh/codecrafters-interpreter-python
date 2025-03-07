@@ -141,8 +141,6 @@ type Ast = str | None | Parse | tuple[Ast, ...]
 @dataclass(frozen=True)
 class Parse:
     rule: str
-    start: int
-    end: int
     expr: Ast
 
     def __str__(self):
@@ -175,11 +173,11 @@ class Parse:
 def de_tree(tree: Ast) -> Ast:
     """Remove unnecessary Parse Tree nodes: have a single-item tuple expr, or Parse node child"""
     match tree:
-        case Parse(_, _, _, p) if isinstance(p, Parse):
+        case Parse(_, p) if isinstance(p, Parse):
             return de_tree(p)
-        case Parse(_, _, _, (solo,)):
+        case Parse(_, (solo,)):
             return de_tree(solo)
-        case Parse(_, _, _, expr):
+        case Parse(_, expr):
             return replace(tree, expr=de_tree(expr))
         case tuple():
             return tuple(de_tree(e) for e in tree)
@@ -292,7 +290,7 @@ class Lib:
                     # documented HACK for IDENTIFIER, otherwise `return;` is ambiguous parse for Expression(Var("return"))
                     if name == "IDENTIFIER" and subtree in keywords:
                         continue
-                    yield Parse(name, i, ii, subtree), ii
+                    yield Parse(name, subtree), ii
             case ("non_double_quote",):
                 if i < len(self.text) and self.text[i] != '"':
                     yield self.text[i], i + 1
