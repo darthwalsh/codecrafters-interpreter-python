@@ -41,7 +41,7 @@ class TestBnf(unittest.TestCase):
         self.assertEqual(bnf('"0" | "9"'), ["0", "9"])
 
     def test_opt(self):
-        self.assertEqual(bnf('"a"?'), ("repeat", 0, 1, "a"))
+        self.assertEqual(bnf('"a"?'), ("optional", "a"))
 
     def test_star(self):
         self.assertEqual(bnf('"a"*'), ("repeat", 0, math.inf, "a"))
@@ -76,17 +76,15 @@ class TestBnf(unittest.TestCase):
         self.assertIn("expected", str(e_info.exception))
 
     def test_compose_concat_optional(self):
-        # MAYBE(opt) would be nice if parse was either ("A", None) or ("A", ("a", "b"))
         optional = bnf('"A" ("a" "b")?')
-        self.assertEqual(parse("Aab", optional), ("A", (("a", "b"),)))
-        self.assertEqual(parse("A", optional), ("A",))
+        self.assertEqual(parse("Aab", optional), ("A", ("a", "b")))
+        self.assertEqual(parse("A", optional), ("A", None))
 
-        # MAYBE(opt) Would be nice if each parse tree was 4 long
         concat = bnf('"a" "b"? "c" "d"?')
-        self.assertEqual(parse("ac", concat), ("a", "c"))
-        self.assertEqual(parse("abc", concat), ("a", ("b",), "c"))
-        self.assertEqual(parse("abcd", concat), ("a", ("b",), "c", ("d",)))
-        self.assertEqual(parse("acd", concat), ("a", "c", ("d",)))
+        self.assertEqual(parse("ac", concat), ("a", None, "c", None))
+        self.assertEqual(parse("abc", concat), ("a", "b", "c", None))
+        self.assertEqual(parse("abcd", concat), ("a", "b", "c", "d"))
+        self.assertEqual(parse("acd", concat), ("a", None, "c", "d"))
 
     def test_load(self):
         defs = Lib().bnf

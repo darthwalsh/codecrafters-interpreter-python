@@ -28,7 +28,7 @@ class Bnf:
       term                 Production is tuple ("rule", "term")
       "a" "b"              Concatenation is tuple ("concat", "a", "b")
       "a" | "b"            Alternation is list ["a", "b"]
-      "a"?                 Option is tuple ("repeat", 0, 1, "a") MAYBE(opt) would make parse tree handler nicer if was Optional<object>/Nothing enum(could use None, but need to change parse() sentinel)
+      "a"?                 Option is tuple ("optional", "a")
       "a"*                 Repeat is tuple ("repeat", 0, inf, "a")
       "a"+                 Repeat is tuple ("repeat", 1, inf, "a")
       <any char except "\""> ("non_double_quote",)
@@ -72,17 +72,12 @@ class Bnf:
 
     def parseRepeat(self):
         e = self.parseSingle()
-        if c := self.try_take("[+?*{]"):
-            lo, hi = 0, math.inf
-            if c == "+":
-                lo = 1
-            elif c == "?":
-                hi = 1
-            return ("repeat", lo, hi, e)
+        if c := self.try_take(r"\?"):
+            return ("optional", e)
+        if c := self.try_take(r"[+*]"):
+            lo = 1 if c == "+" else 0
+            return ("repeat", lo, math.inf, e)
         return e
-
-    # Rule names can contain '+' so if followed by a letter it's part of the name not a regex repeat.
-    ident_reg = r"^((?:[\w-]|\+\w)+)(\([\w(),<≤/\+-]+\))?"
 
     def parseSingle(self):
         if self.try_take('"'):
@@ -115,7 +110,7 @@ class Bnf:
                 cs.append(self.take())
         return "".join(cs)
 
-    def try_take(self, pattern=".") -> str:
+    def try_take(self, pattern=".") -> str | None:
         m = re.match(pattern, self.text[self.i :])
         if not m:
             return None
@@ -140,12 +135,15 @@ def split_defs(bnf_text):
         yield (s.strip() for s in def_str.split("→"))
 
 
+type Ast = str | None | Parse | tuple[Ast, ...]
+
+
 @dataclass(frozen=True)
 class Parse:
     rule: str
     start: int
     end: int
-    expr: object
+    expr: Ast
 
     def __str__(self):
         match self.rule:
@@ -174,15 +172,15 @@ class Parse:
         return str(self)
 
 
-def de_tree(tree):
+def de_tree(tree: Ast) -> Ast:
     """Remove unnecessary Parse Tree nodes: have a single-item tuple expr, or Parse node child"""
     match tree:
         case Parse(_, _, _, p) if isinstance(p, Parse):
             return de_tree(p)
         case Parse(_, _, _, (solo,)):
             return de_tree(solo)
-        case Parse():
-            return replace(tree, expr=de_tree(tree.expr))
+        case Parse(_, _, _, expr):
+            return replace(tree, expr=de_tree(expr))
         case tuple():
             return tuple(de_tree(e) for e in tree)
         case _:
@@ -236,7 +234,7 @@ class Lib:
             return self.ignore_whitespace(i + 1)
         return i
 
-    def resolve(self, i: int, expr, skip_ws) -> Iterator[tuple[object, int]]:
+    def resolve(self, i: int, expr, skip_ws) -> Iterator[tuple[Ast, int]]:
         """Produces the full parse tree with single-element productions, but simple is better than clever.
         Let another layer figure out the AST.
 
@@ -247,14 +245,13 @@ class Lib:
         Returns AST:
             - "abc" "" - str for str and range
             - (e1,e2) (e1,) () - tuples for concat and repeat
+            - e1 None - None or the value for optional
             - Parse("rule", ..., name) rule creates Parse: MAYBE could return a simpler data structure? see split_parse_result but don't literally use tuples, confusing with above
             - () for EOF
 
         Tried a version of this code that produced Parse instead of tuple[object, int].
         Definitely should not flatten ((a, b), c) to (a, b, c) because that will end up losing the tree structure.
-        MAYBE(opt) BNF like a b c? d? parses to one of
-            (a, b)
-              or (a, b, (c,)) which is impossible to destructure."""
+        """
         if skip_ws:
             i = self.ignore_whitespace(i)
         logging.debug("resolve(%s %s", i, expr)
@@ -273,8 +270,11 @@ class Lib:
             case ("concat", e, *exprs):
                 for vv, ii in self.resolve(i, e, skip_ws):
                     for vvv, iii in self.resolve(ii, ("concat", *exprs), skip_ws):
-                        combined = (vv,) + typing.cast(tuple[object, ...], vvv) if vv else vvv
+                        combined = (vv,) + typing.cast(tuple[Ast, ...], vvv) if vv != () else vvv
                         yield combined, iii
+            case ("optional", e):
+                yield None, i
+                yield from self.resolve(i, e, skip_ws)
             case ("repeat", lo, hi, e):
                 if not lo:
                     yield (), i
@@ -282,7 +282,7 @@ class Lib:
                     dec = ("repeat", max(lo - 1, 0), hi - 1, e)
                     for vv, ii in self.resolve(i, e, skip_ws):
                         for vvv, iii in self.resolve(ii, dec, skip_ws):
-                            combined = (vv,) + typing.cast(tuple[object, ...], vvv) if vv else vvv
+                            combined = (vv,) + typing.cast(tuple[Ast, ...], vvv) if vv != () else vvv
                             yield combined, iii
             case ("rule", name):
                 literal_text = name.isupper()
