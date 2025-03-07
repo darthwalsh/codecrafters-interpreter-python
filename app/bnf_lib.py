@@ -147,18 +147,12 @@ class Parse:
     end: int
     expr: object
 
-    def __iter__(self):
-        yield self.rule
-        yield self.start
-        yield self.end
-        yield self.expr
-
     def __str__(self):
         match self.rule:
             case "IDENTIFIER":
                 return f"_{self.expr}"
             case "STRING":
-                return repr(self.expr)
+                return typing.cast(str, self.expr)
             case "NUMBER":
                 return f"+{self.expr}"
             case "DIGIT":
@@ -168,7 +162,7 @@ class Parse:
             case _:
                 pass
         if self.rule.isupper():
-            raise ValueError(self.expr)
+            raise RuntimeError("Impossible state:", self.expr)  # pragma: no cover
 
         if isinstance(self.expr, tuple):
             expr = ", ".join(map(str, self.expr))
@@ -205,15 +199,18 @@ class Lib:
         with open(productions_path, encoding="utf-8") as f:
             productions = f.read()
 
+        self.load_production_rules(productions)
+        self.bnf["EOF"] = ("EOF",)
+
+    def load_production_rules(self, productions):
         for name, text in split_defs(productions):
             try:
                 rule = Bnf(text)
             except Exception as e:
-                raise ValueError(name) from e  # pragma: no cover
+                raise ValueError(name) from e
             if name in self.bnf:
-                raise ValueError("duplicate", name)  # pragma: no cover
+                raise ValueError("duplicate", name)
             self.bnf[name] = rule.expr
-        self.bnf["EOF"] = ("EOF",)
 
     def parse(self, text: str, expr):
         self.text = text
@@ -303,4 +300,4 @@ class Lib:
                 if i == len(self.text):
                     yield (), i
             case _:
-                raise ValueError("unknown type:", expr)
+                raise RuntimeError("Impossible state:", expr)

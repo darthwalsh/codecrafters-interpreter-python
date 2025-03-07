@@ -8,7 +8,6 @@ from app.interpreter import Interpreter
 from app.parser import Parser
 from app.scanner import Scanner
 
-
 LEXICAL_ERROR_CODE = 65
 RUNTIME_ERROR_CODE = 70
 

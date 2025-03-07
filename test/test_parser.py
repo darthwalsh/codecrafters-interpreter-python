@@ -1,6 +1,8 @@
 import unittest
 
 from app.ast import AstPrinter
+from app.bnf_lib import Parse
+from app.parser import Parser
 from test.runner import parse, parse_for_errors
 
 
@@ -125,6 +127,24 @@ class TestParser(unittest.TestCase):
         self.validate("{1;}{}", "{ 1.0; } {  }")
 
         # self.error("{", "Expect '}' after block.", "") TODO(parse-error)
+
+    def test_impossible(self):
+        with self.assertRaises(RuntimeError) as e_info:
+            Parser("source", lambda *_: None).convert_expr(Parse("IDENTIFIER", 0, 1, 1))
+        self.assertIn("Impossible state", str(e_info.exception))
+
+        with self.assertRaises(RuntimeError) as e_info:
+            Parser("source", lambda *_: None).convert_expr(Parse("arguments", 0, 1, 1))
+        self.assertIn("Impossible state", str(e_info.exception))
+
+        with self.assertRaises(RuntimeError) as e_info:
+            Parser("source", lambda *_: None).convert_stmt(Parse("typo", 0, 1, 1))
+        self.assertIn("Impossible state", str(e_info.exception))
+
+        with self.assertRaises(RuntimeError) as e_info:
+            Parser("source", lambda *_: None).convert_stmts(Parse("convert_stmts", 0, 1, None))
+        self.assertIn("Impossible state", str(e_info.exception))
+
 
 
 @unittest.expectedFailure

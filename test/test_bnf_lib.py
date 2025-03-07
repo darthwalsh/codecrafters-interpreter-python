@@ -25,6 +25,8 @@ class TestBnf(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             bnf('"a')
+        with self.assertRaises(ValueError):
+            bnf('"\\a"')
 
     def test_range(self):
         self.assertEqual(bnf('"0" ... "9"'), range(0x30, 0x3A))
@@ -90,6 +92,16 @@ class TestBnf(unittest.TestCase):
         defs = Lib().bnf
         self.assertIn("STRING", defs)
 
+    def test_load_dupe(self):
+        with self.assertRaises(ValueError) as e_info:
+            Lib().load_production_rules('DIGIT          → "0" ... "9" ;\nDIGIT          → "0" ... "9" ;')
+        self.assertIn("duplicate", str(e_info.exception))
+
+    def test_load_bad(self):
+        with self.assertRaises(ValueError) as e_info:
+            Lib().load_production_rules('CUSTOM → abc')
+        self.assertIn("CUSTOM", str(e_info.exception))
+
 
 class TestDeTree(unittest.TestCase):
     def test_de_tree(self):
@@ -111,7 +123,7 @@ class TestDeTree(unittest.TestCase):
 try:
     library = Lib()
 except Exception as e:
-    print(e)
+    print(e)  # pragma: no cover
 
 
 def parse(source, expr):
@@ -139,7 +151,7 @@ class TestLib(unittest.TestCase):
         self.assertEqual(parse("0", ["0", "9"]), "0")
 
     def test_or_repeat(self):
-        # Removed this functionality from bnf_lib, as it wasn't needed. 
+        # Removed this functionality from bnf_lib, as it wasn't needed.
         with self.assertRaises(ValueError) as e_info:
             parse("0", ["0", "0"])
         self.assertIn("ambiguous", str(e_info.exception))
@@ -212,6 +224,24 @@ class TestLib(unittest.TestCase):
             split_parse_result(de_tree(parse("1+2*3", ("rule", "term")))),
             ("term", (("NUMBER", "1"), (("+", ("factor", (("NUMBER", "2"), (("*", ("NUMBER", "3")),)))),))),
         )
+
+    def test_bad_expr(self):
+        with self.assertRaises(RuntimeError) as e_info:
+            parse("1", ("repeat", "wrong_number_of_args"))
+        self.assertIn("Impossible state:", str(e_info.exception))
+
+
+class TestParse(unittest.TestCase):
+    def validate_str(self, source, expected, rule="expression"):
+        self.assertEqual(str(de_tree(parse(source, ("rule", rule)))), expected)
+
+    def test_string(self):
+        self.validate_str("a", "_a")
+        self.validate_str("1", "d1", rule="DIGIT")
+        self.validate_str("", "<eof>", rule="EOF")
+        self.validate_str("1", "+1")
+        self.validate_str('"ab"', '"ab"')
+        self.validate_str("nil", "primary(nil)")
 
 
 def split_parse_result(pr: Parse | object):
