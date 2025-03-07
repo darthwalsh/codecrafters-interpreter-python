@@ -8,9 +8,6 @@ from app.interpreter import Interpreter
 from app.parser import Parser
 from app.scanner import Scanner
 
-logging.basicConfig(
-    format="%(levelname)8s %(asctime)s %(message)s", level=os.environ.get("LOGLEVEL", "INFO")
-)
 
 LEXICAL_ERROR_CODE = 65
 RUNTIME_ERROR_CODE = 70
@@ -99,6 +96,10 @@ def main(source):
 
 
 if __name__ == "__main__":  # pragma: no cover
+    logging.basicConfig(
+        format="%(levelname)8s %(asctime)s %(message)s", level=os.environ.get("LOGLEVEL", "INFO")
+    )
+
     if len(sys.argv) != 3:
         sys.exit("Usage: ./your_program.sh [tokenize|parse|evaluate|run] <filename>")
 

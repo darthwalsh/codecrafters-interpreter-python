@@ -21,8 +21,10 @@ class TestBnf(unittest.TestCase):
         self.assertEqual(bnf('"a\\""'), 'a"')
         self.assertEqual(bnf('"\\"a"'), '"a')
 
-    def test_str(self):
         self.assertEqual(bnf('"y" "a" "m" "l"'), ("concat", "y", "a", "m", "l"))
+
+        with self.assertRaises(ValueError):
+            bnf('"a')
 
     def test_range(self):
         self.assertEqual(bnf('"0" ... "9"'), range(0x30, 0x3A))
@@ -34,7 +36,7 @@ class TestBnf(unittest.TestCase):
         self.assertEqual(bnf('<any char except "\\"">'), ("non_double_quote",))
 
     def test_or(self):
-        self.assertEqual(bnf('"0" | "9"'), {"0", "9"})
+        self.assertEqual(bnf('"0" | "9"'), ["0", "9"])
 
     def test_opt(self):
         self.assertEqual(bnf('"a"?'), ("repeat", 0, 1, "a"))
@@ -57,7 +59,7 @@ class TestBnf(unittest.TestCase):
         self.assertEqual(bnf(" dig /* Empty */ "), ("rule", "dig"))
 
     def test_comments(self):
-        self.assertEqual(bnf("dig /* A-F */\n| bar /* a-f */"), {("rule", "dig"), ("rule", "bar")})
+        self.assertEqual(bnf("dig /* A-F */\n| bar /* a-f */"), [("rule", "dig"), ("rule", "bar")])
 
     def test_remaining(self):
         with self.assertRaises(ValueError) as e_info:
@@ -134,10 +136,13 @@ class TestLib(unittest.TestCase):
         self.assertEqual(parse("2", range(0x30, 0x3A)), "2")
 
     def test_or(self):
-        self.assertEqual(parse("0", {"0", "9"}), "0")
+        self.assertEqual(parse("0", ["0", "9"]), "0")
 
     def test_or_repeat(self):
-        self.assertEqual(parse("0", {"0", "0"}), "0")
+        # Removed this functionality from bnf_lib, as it wasn't needed. 
+        with self.assertRaises(ValueError) as e_info:
+            parse("0", ["0", "0"])
+        self.assertIn("ambiguous", str(e_info.exception))
 
     def test_star(self):
         self.assertEqual(parse("a", ("repeat", 0, math.inf, "a")), ("a",))
@@ -146,7 +151,7 @@ class TestLib(unittest.TestCase):
         self.assertEqual(parse("a", ("repeat", 1, math.inf, "a")), ("a",))
 
     def test_plus_not_match(self):
-        self.assertEqual(parse("b", {"b", ("repeat", 1, math.inf, "a")}), "b")
+        self.assertEqual(parse("b", ["b", ("repeat", 1, math.inf, "a")]), "b")
 
     def test_times(self):
         self.assertEqual(parse("aaa", ("repeat", 3, 3, "a")), tuple("aaa"))

@@ -27,7 +27,7 @@ class Bnf:
       "0" ... "9"          Character range is exclusive range(0x30, 0x3A)
       term                 Production is tuple ("rule", "term")
       "a" "b"              Concatenation is tuple ("concat", "a", "b")
-      "a" | "b"            Alternation is frozenset({"a", "b"})
+      "a" | "b"            Alternation is list ["a", "b"]
       "a"?                 Option is tuple ("repeat", 0, 1, "a") MAYBE(opt) would make parse tree handler nicer if was Optional<object>/Nothing enum(could use None, but need to change parse() sentinel)
       "a"*                 Repeat is tuple ("repeat", 0, inf, "a")
       "a"+                 Repeat is tuple ("repeat", 1, inf, "a")
@@ -55,11 +55,11 @@ class Bnf:
         return self.parseOr()
 
     def parseOr(self):
-        items = set()
+        items = []
         while True:
-            items.add(self.parseConcat())
+            items.append(self.parseConcat())
             if not self.try_take(r"\|"):
-                return solo(frozenset(items))
+                return solo(items)
 
     def parseConcat(self):
         items = []
@@ -209,9 +209,9 @@ class Lib:
             try:
                 rule = Bnf(text)
             except Exception as e:
-                raise ValueError(name) from e
+                raise ValueError(name) from e  # pragma: no cover
             if name in self.bnf:
-                raise ValueError("duplicate", name)
+                raise ValueError("duplicate", name)  # pragma: no cover
             self.bnf[name] = rule.expr
         self.bnf["EOF"] = ("EOF",)
 
@@ -268,7 +268,7 @@ class Lib:
             case range():
                 if i < len(self.text) and ord(self.text[i]) in expr:
                     yield self.text[i], i + 1
-            case set() | frozenset():
+            case list():
                 for e in expr:
                     yield from self.resolve(i, e, skip_ws)
             case ("concat",):
