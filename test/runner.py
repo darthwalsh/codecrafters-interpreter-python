@@ -14,7 +14,7 @@ def parse_for_errors(source, reporter):
     parser = Parser(source, reporter)
 
     # Might regret this magic, so don't move this to app/
-    if any(t.type in (TokenType.SEMICOLON, TokenType.LEFT_BRACE) for t in tokens): # TODO remove?
+    if any(t.type in (TokenType.SEMICOLON, TokenType.LEFT_BRACE) for t in tokens): # TODO switch to bnf_scanner
         return parser.parse_stmt()
     return parser.parse_expr()
 

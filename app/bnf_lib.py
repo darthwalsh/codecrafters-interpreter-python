@@ -153,6 +153,8 @@ class Parse:
                 return f"+{self.expr}"
             case "DIGIT":
                 return f"d{self.expr}"
+            case "KEYWORD":  # HACK, should document this
+                return f"`{self.expr}`"
             case "EOF":
                 return "<eof>"
             case _:
@@ -188,17 +190,24 @@ def de_tree(tree: Ast) -> Ast:
 class Lib:
     def __init__(self):
         self.bnf = {}
-        self.load_defs()
+
+    @staticmethod
+    def full():
+        lib = Lib()
+        lib.load_defs()
+        return lib
 
     def load_defs(self):
+        self.load_rules(self.read_productions())
+        self.bnf["EOF"] = ("EOF",)
+
+    def read_productions(self):
         productions_path = (Path(__file__).parent / "productions.bnf").resolve()
         with open(productions_path, encoding="utf-8") as f:
             productions = f.read()
+        return productions
 
-        self.load_production_rules(productions)
-        self.bnf["EOF"] = ("EOF",)
-
-    def load_production_rules(self, productions):
+    def load_rules(self, productions):
         for name, text in split_defs(productions):
             try:
                 rule = Bnf(text)
@@ -237,8 +246,7 @@ class Lib:
         Let another layer figure out the AST.
 
 
-        MAYBE removed ("diff, so now is backtracking not needed???
-        MAYBE just return the first found object -- if backtracking not needed, then can have self.i move forward.
+        MAYBE(first) just return the first found object -- IF backtracking not needed, then can have self.i move forward.
 
         Returns AST:
             - "abc" "" - str for str and range

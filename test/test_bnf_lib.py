@@ -1,3 +1,4 @@
+from functools import cache
 import math
 import unittest
 
@@ -87,17 +88,17 @@ class TestBnf(unittest.TestCase):
         self.assertEqual(parse("acd", concat), ("a", None, "c", "d"))
 
     def test_load(self):
-        defs = Lib().bnf
+        defs = Lib.full().bnf
         self.assertIn("STRING", defs)
 
     def test_load_dupe(self):
         with self.assertRaises(ValueError) as e_info:
-            Lib().load_production_rules('DIGIT          → "0" ... "9" ;\nDIGIT          → "0" ... "9" ;')
+            Lib().load_rules('DIGIT          → "0" ... "9" ;\nDIGIT          → "0" ... "9" ;')
         self.assertIn("duplicate", str(e_info.exception))
 
     def test_load_bad(self):
         with self.assertRaises(ValueError) as e_info:
-            Lib().load_production_rules("CUSTOM → abc")
+            Lib().load_rules("CUSTOM → abc")
         self.assertIn("CUSTOM", str(e_info.exception))
 
 
@@ -118,14 +119,13 @@ class TestDeTree(unittest.TestCase):
         self.assertEqual(de_tree(call_with_list), call_with_list)
 
 
-try:
-    library = Lib()
-except Exception as e:
-    print(e)  # pragma: no cover
+@cache
+def get_library():
+    return Lib.full()
 
 
 def parse(source, expr):
-    return library.parse(source, expr)
+    return get_library().parse(source, expr)
 
 
 class TestLib(unittest.TestCase):

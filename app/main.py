@@ -4,9 +4,9 @@ import sys
 from contextlib import contextmanager
 
 from app.ast import AstPrinter
+from app.bnf_scanner import Scanner
 from app.interpreter import Interpreter
 from app.parser import Parser
-# from app.scanner import Scanner
 
 LEXICAL_ERROR_CODE = 65
 RUNTIME_ERROR_CODE = 70
@@ -64,12 +64,12 @@ def header(stage):
 
 
 def main(source):
-    # scanner = Scanner(source, report)
-    # tokens = scanner.scan_tokens()
+    scanner = Scanner(source, report)
+    tokens = scanner.scan_tokens()
 
-    # with step("tokenize") as out:
-    #     for token in tokens:
-    #         print(token, file=out) # TODO traverse the parse tree and emit tokens?
+    with step("tokenize") as out:
+        for token in tokens:
+            print(token, file=out)
 
     parser = Parser(source, report)
 

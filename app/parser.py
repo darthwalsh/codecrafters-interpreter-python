@@ -290,12 +290,12 @@ all_tokens = char_tokens | char_equal_tokens | with_equal | keywords | extra_tok
 
 
 def fake_token(c: str):
-    return Token(all_tokens[c], c, -99, None)  # TODO fix the -99 line numbers
+    return Token(all_tokens[c], c, -99, None)  # TODO(token) fix the -99 line numbers
 
 
 class Parser:
     def __init__(self, source: str, report: Callable[[int, str, str], None]):
-        self.lib = Lib()
+        self.lib = Lib.full()
         self.current = 0
         self.report = report
         self.source = source
