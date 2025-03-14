@@ -9,9 +9,9 @@ function       → IDENTIFIER "(" parameters? ")" block ;
 parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
 
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
-statement      → exprStmt
+statement      → ifStmt
+               | exprStmt
                | forStmt
-               | ifStmt
                | printStmt
                | returnStmt
                | whileStmt

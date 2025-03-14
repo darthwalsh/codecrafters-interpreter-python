@@ -1,6 +1,10 @@
+import inspect
 import logging
 import math
+import os
 import re
+import sys
+from traceback import TracebackException
 import typing
 from collections.abc import Iterator
 from dataclasses import dataclass, replace
@@ -269,8 +273,13 @@ class Lib:
                 if i < len(self.text) and ord(self.text[i]) in expr:
                     yield self.text[i], i + 1
             case list():
+                first = None
                 for e in expr:
-                    yield from self.resolve(i, e, skip_ws)
+                    for found in self.resolve(i, e, skip_ws):
+                        if first:
+                            self.panic(("ambiguous", first, found))
+                        yield found
+                        first = found
             case ("concat",):
                 yield (), i
             case ("concat", e, *exprs):
@@ -282,14 +291,14 @@ class Lib:
                 yield None, i
                 yield from self.resolve(i, e, skip_ws)
             case ("repeat", lo, hi, e):
-                if not lo:
-                    yield (), i
                 if hi:
                     dec = ("repeat", max(lo - 1, 0), hi - 1, e)
                     for vv, ii in self.resolve(i, e, skip_ws):
                         for vvv, iii in self.resolve(ii, dec, skip_ws):
                             combined = (vv,) + typing.cast(tuple[Ast, ...], vvv) if vv != () else vvv
                             yield combined, iii
+                if not lo:
+                    yield (), i
             case ("rule", name):
                 literal_text = name.isupper()
                 for e, ii in self.resolve(i, self.bnf[name], skip_ws=not literal_text):
@@ -307,3 +316,14 @@ class Lib:
                     yield (), i
             case _:
                 raise RuntimeError("Impossible state:", expr)
+
+
+    def panic(self, obj):
+        """TODO print the BNF rules being used up the stack frame, as if it was a python call stack"""
+        for frameinfo in inspect.stack(0):
+            if 'self' not in frameinfo.frame.f_locals:
+                break
+            print(frameinfo.frame.f_locals)
+            print()
+        print(obj, flush=True)
+        os._exit(1)
