@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from app.ast import AstPrinter
 from app.interpreter import Interpreter
 from app.parser import Parser
+from app.resolver import Resolver
 from app.scanner import Scanner
 
 LEXICAL_ERROR_CODE = 65
@@ -86,8 +87,12 @@ def main(source):
         stmt = parser.parse_stmt()
         print(AstPrinter().view(stmt), file=out)
 
+    interpreter = Interpreter(runtime_error, out)
+    with step("resolve") as out:
+        Resolver(interpreter).resolve(stmt)
+
     with step("run") as out:
-        Interpreter(runtime_error, out).interpret(stmt)
+        interpreter.interpret(stmt)
 
     sys.exit(f"Unknown command: {command}")
 

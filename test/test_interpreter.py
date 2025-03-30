@@ -227,3 +227,20 @@ counter();
         with self.assertRaises(AssertionError) as e:
             self.validate("1;", "whatever")
         self.assertEqual(str(e.exception), "Expected expression, got statements")
+
+    def test_resolved_func_var(self):
+        self.validate_print(
+            """
+var variable = "global";
+
+{
+  fun f() {
+    print variable;
+  }
+  f();
+  var variable = "local";
+  f();
+}""",
+            "global",
+            "global",
+        )
