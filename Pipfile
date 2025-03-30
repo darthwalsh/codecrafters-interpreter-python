@@ -12,6 +12,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+# HACK -- run.sh is not using pipenv for performance, so deps will not be picked up! Undo that hack if adding any packages.
 
 [dev-packages]
 coverage = "*"

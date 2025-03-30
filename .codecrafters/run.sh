@@ -6,4 +6,5 @@
 #
 # Learn more: https://codecrafters.io/program-interface
 
-exec pipenv run python3 -m app.main "$@"
+# HACK Removing pipenv here changes python3 startup time from 700ms to almost nothing 
+exec python3 -m app.main "$@"
