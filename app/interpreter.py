@@ -27,6 +27,9 @@ def stringify(o):
         case _:
             return str(o)
 
+def is_equal(x: object, y: object):
+    return type(x) is type(y) and x == y
+
 
 def truthy(o: object):
     """Ruby semantics"""
@@ -75,9 +78,9 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
         left, right = self.evaluate(binary.left), self.evaluate(binary.right)
         match binary.operator.type:
             case TT.BANG_EQUAL:
-                return left != right
+                return not is_equal(left, right)
             case TT.EQUAL_EQUAL:
-                return left == right
+                return is_equal(left, right)
 
             case TT.PLUS:
                 if isinstance(left, str) and isinstance(right, str):

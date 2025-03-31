@@ -85,6 +85,8 @@ class TestInterpreter(unittest.TestCase):
         self.validate("0 == nil", "false")
         self.validate("0 != 1 == true", "true")
 
+        self.validate("true == 1", "false")
+        self.validate("true != 1", "true")
         self.validate("0/0 == 0/0", "false")
 
     def test_inequality(self):
