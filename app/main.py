@@ -1,5 +1,7 @@
+import os
 import sys
 from contextlib import contextmanager
+from functools import cache
 
 from app.ast import AstPrinter
 from app.interpreter import Interpreter
@@ -12,7 +14,7 @@ LEXICAL_ERROR_CODE = 65
 RUNTIME_ERROR_CODE = 70
 
 MAX_ERRORS = 9000
-
+CRAFTING_INTERPRETERS_COMPAT = os.getenv("CRAFTING_INTERPRETERS_COMPAT")
 
 had_error = False
 
@@ -42,6 +44,12 @@ def runtime_error(e: LoxRuntimeError):
     print(f"[line {e.token.line}]", file=sys.stderr)
 
 
+@cache
+def verbose_stream():
+    if CRAFTING_INTERPRETERS_COMPAT:
+        return open(os.devnull, "w")
+    return sys.stderr
+
 @contextmanager
 def step(stage, exit_code=LEXICAL_ERROR_CODE):
     """Run stage using stdout or stderr then exit on errors or command.
@@ -49,16 +57,16 @@ def step(stage, exit_code=LEXICAL_ERROR_CODE):
     """
     header(stage)
     final = stage == command
-    yield sys.stdout if final else sys.stderr
+    yield sys.stdout if final else verbose_stream()
     if had_error:
         sys.exit(exit_code)
     if final:
         sys.exit()
-    print(file=sys.stderr)
+    print(file=verbose_stream())
 
 
 def header(stage):
-    print(f" {stage.upper()} ".center(20, "="), file=sys.stderr)
+    print(f" {stage.upper()} ".center(20, "="), file=verbose_stream())
 
 
 def main(source):

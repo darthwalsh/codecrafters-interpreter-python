@@ -67,7 +67,7 @@ class TestParser(unittest.TestCase):
         self.validate("x = y", "(= x y)")
         self.validate("x = y = z", "(= x (= y z))")
 
-        self.error("x =", "Expect expression", None)
+        self.error("x =", "Expect expression.", None)
         self.error("1 = x", "Invalid assignment target.", "1.0")
 
     def test_var(self):
@@ -111,7 +111,7 @@ class TestParser(unittest.TestCase):
         self.validate("print 1;", "print 1.0;")
 
         self.error("print 1; 3", "Expect ';' after expression.", "print 1.0;")
-        self.error("print; 3;", "Expect expression", "3.0;")
+        self.error("print; 3;", "Expect expression.", "3.0;")
 
     def test_block(self):
         self.validate("{1;}", "{ 1.0; }")
@@ -124,8 +124,8 @@ class TestParser(unittest.TestCase):
         self.error("1 1", "Expected end of expression", "1.0")
 
     def test_trailing_after_parens(self):
-        self.error("(72 +)", "Expect expression", None)
+        self.error("(72 +)", "Expect expression.", None)
 
     def test_synchronize(self):
-        self.error("var x = + + ; print 1;", "Expect expression", "print 1.0;")
-        self.error("var x = + + + print 1;", "Expect expression", "print 1.0;")
+        self.error("var x = + + ; print 1;", "Expect expression.", "print 1.0;")
+        self.error("var x = + + + print 1;", "Expect expression.", "print 1.0;")

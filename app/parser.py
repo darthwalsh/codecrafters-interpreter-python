@@ -317,7 +317,7 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
         if e := self.try_take(TT.IDENTIFIER):
             return Variable(e)
 
-        raise self.error(self.peek(), "Expect expression")
+        raise self.error(self.peek(), "Expect expression.")
 
     ### Error Handling ###
     def synchronize(self):
