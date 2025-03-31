@@ -222,6 +222,9 @@ counter();
             )
         assert str(e.exception) == "Impossible state"
 
+    def test_resolved_global(self):
+        self.validate_print("var a = 23; var a = a; print a;", "23")
+
     def test_resolved_func_var(self):
         self.validate_print(
             """

@@ -33,7 +33,7 @@ class Resolver(BaseVisitor):
 
     @override
     def visit_var(self, var: Var):
-        if var.name.lexeme in self.scope:
+        if self.parent and var.name.lexeme in self.scope:
             ex = LoxRuntimeError(var.name, "Already a variable with this name in this scope.")
             self.on_error(ex)
         self.scope[var.name.lexeme] = VarState.INITIALIZING
