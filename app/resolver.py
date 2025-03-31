@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from enum import Enum, auto
 from typing import Self, override
 
@@ -14,10 +15,16 @@ class VarState(Enum):
 
 
 class Resolver(BaseVisitor):
-    def __init__(self, interpreter: Interpreter, parent: Self | None = None):
+    def __init__(
+        self,
+        interpreter: Interpreter,
+        parent: Self | None = None,
+        on_error: Callable[[LoxRuntimeError], None] | None = None,
+    ):
         self.interpreter = interpreter
         self.scope: dict[str, VarState] = {}  # Ignored if parent is None (global scope)
         self.parent = parent
+        self.on_error = on_error if on_error else parent.on_error if parent else interpreter.runtime_error
 
     @override
     def visit_block(self, block: Block) -> None:
@@ -26,6 +33,9 @@ class Resolver(BaseVisitor):
 
     @override
     def visit_var(self, var: Var):
+        if var.name.lexeme in self.scope:
+            ex = LoxRuntimeError(var.name, "Already a variable with this name in this scope.")
+            self.on_error(ex)
         self.scope[var.name.lexeme] = VarState.INITIALIZING
         if var.initializer:
             self.resolve(var.initializer)
@@ -35,7 +45,7 @@ class Resolver(BaseVisitor):
     def visit_variable(self, variable: Variable):
         if self.parent and self.scope.get(variable.name.lexeme) == VarState.INITIALIZING:
             ex = LoxRuntimeError(variable.name, "Can't read local variable in its own initializer.")
-            self.interpreter.runtime_error(ex)
+            self.on_error(ex)
         self.resolve_local(variable, variable.name.lexeme)
 
     @override

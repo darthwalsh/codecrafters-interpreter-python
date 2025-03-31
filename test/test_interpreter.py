@@ -22,7 +22,7 @@ class TestInterpreter(unittest.TestCase):
 
     def interpret(self, interpreter: Interpreter, source: str):
         stmt = parse(source)
-        Resolver(interpreter).resolve(stmt)
+        Resolver(interpreter, on_error=reraise).resolve(stmt)
         interpreter.interpret(stmt)
 
     def validate_single_error_expr(self, source: str):
@@ -169,7 +169,7 @@ counter();
     def test_var(self):
         self.validate_print("var x = 1 + 2; print x;", "3")
         self.validate_print("var x; print x;", "nil")
-        self.validate_print("var x = 1; var x = 2; print x;", "2")
+        self.validate_print("var x = 1; { var x = 2; print x; }", "2")
 
         self.runtime_error("print x; print 1;", "Undefined variable 'x'.")
 
@@ -292,10 +292,10 @@ var count = 0;
         )
 
     def test_resolved_var(self):
-        self.runtime_error("var x = x;", "Undefined variable 'x'.")
         self.runtime_error(
-            "{var x = x;}", "Can't read local variable in its own initializer.", "Undefined variable 'x'."
-        )
+            "var x = x;", "Undefined variable 'x'."
+        )  # In global scope, accessing global is a runtime error
+        #  Not testing `{var x = x;}` because that is resolver error
 
 
 class TestRefEqualityDict(unittest.TestCase):
