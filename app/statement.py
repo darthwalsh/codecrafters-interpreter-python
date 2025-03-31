@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import override
 
-from app.expression import Expr
+from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable, Visitor
 from app.scanner import Token
 
 
@@ -90,4 +91,82 @@ class StmtVisitor[T](ABC):
 
     @abstractmethod
     def visit_while(self, w: While) -> T:
+        pass
+
+
+class BaseVisitor(Visitor[None], StmtVisitor[None]):
+    @override
+    def visit_block(self, block: Block) -> None:
+        for st in block.statements:
+            st.accept(self)
+
+    @override
+    def visit_expression(self, ex: Expression) -> None:
+        ex.expr.accept(self)
+
+    @override
+    def visit_function(self, f: Function) -> None:
+        for st in f.body:
+            st.accept(self)
+
+    @override
+    def visit_if(self, i: If) -> None:
+        i.condition.accept(self)
+        i.then_branch.accept(self)
+        if i.else_branch:
+            i.else_branch.accept(self)
+
+    @override
+    def visit_return(self, ret: Return) -> None:
+        if ret.value:
+            ret.value.accept(self)
+
+    @override
+    def visit_print(self, pr: Print) -> None:
+        pr.expr.accept(self)
+
+    @override
+    def visit_var(self, var: Var) -> None:
+        if var.initializer:
+            var.initializer.accept(self)
+
+    @override
+    def visit_while(self, w: While) -> None:
+        w.condition.accept(self)
+        w.body.accept(self)
+
+    @override
+    def visit_assign(self, assign: Assign) -> None:
+        assign.value.accept(self)
+
+    @override
+    def visit_binary(self, binary: Binary) -> None:
+        binary.left.accept(self)
+        binary.right.accept(self)
+
+    @override
+    def visit_call(self, call: Call) -> None:
+        call.callee.accept(self)
+        for arg in call.args:
+            arg.accept(self)
+
+    @override
+    def visit_grouping(self, grouping: Grouping) -> None:
+        grouping.value.accept(self)
+
+    @override
+    def visit_literal(self, literal: Literal) -> None:
+        pass
+
+    @override
+    def visit_logical(self, logical: Logical) -> None:
+        logical.left.accept(self)
+        logical.right.accept(self)
+
+    @override
+    def visit_unary(self, unary: Unary) -> None:
+        unary.right.accept(self)
+
+    @override
+    def visit_variable(self, variable: Variable) -> None:
         pass

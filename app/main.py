@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from app.ast import AstPrinter
 from app.interpreter import Interpreter
 from app.parser import Parser
+from app.resolver import Resolver
 from app.scanner import Scanner
 
 LEXICAL_ERROR_CODE = 65
@@ -80,14 +81,16 @@ def main(source):
             sys.exit("IMPOSSIBLE STATE: None returned without parse error")  # pragma: no cover
 
         with step("evaluate") as out:
-            Interpreter(runtime_error, out).interpret(expr)
+            Interpreter(runtime_error, out).interpret(expr)  # No Resolver for eval expression
 
     with step("parse_statement") as out:
         stmt = parser.parse_stmt()
         print(AstPrinter().view(stmt), file=out)
 
     with step("run") as out:
-        Interpreter(runtime_error, out).interpret(stmt)
+        interpreter = Interpreter(runtime_error, out)
+        Resolver(interpreter).resolve(stmt)
+        interpreter.interpret(stmt)
 
     sys.exit(f"Unknown command: {command}")
 

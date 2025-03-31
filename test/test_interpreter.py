@@ -3,7 +3,8 @@ import unittest
 from time import time
 
 from app.expression import Binary, Literal, Logical, Unary
-from app.interpreter import Interpreter, stringify
+from app.interpreter import Interpreter, RefEqualityDict, stringify
+from app.resolver import Resolver
 from app.runtime import LoxRuntimeError
 from app.scanner import Token
 from app.scanner import TokenType as TT
@@ -19,11 +20,15 @@ class TestInterpreter(unittest.TestCase):
         s = stringify(interpreter.evaluate(expr))
         self.assertEqual(s, expected)
 
-    def validate_single_error_expr(self, source):
+    def interpret(self, interpreter: Interpreter, source: str):
+        stmt = parse(source)
+        Resolver(interpreter).resolve(stmt)
+        interpreter.interpret(stmt)
+
+    def validate_single_error_expr(self, source: str):
         """If expr has runtime error, one error nicely reported"""
         runtime_err = []
-        interpreter = Interpreter(runtime_err.append)
-        interpreter.interpret(parse(source))
+        self.interpret(Interpreter(runtime_err.append), source)
         self.assertEqual(len(runtime_err), 1)
 
     def validate_print(self, source, *out):
@@ -32,19 +37,16 @@ class TestInterpreter(unittest.TestCase):
 
     def run_stmt(self, source):
         buf = io.StringIO()
-        interpreter = Interpreter(reraise, buf)
-        interpreter.interpret(parse(source))
-
+        self.interpret(Interpreter(reraise, buf), source)
         return buf.getvalue().splitlines()
 
     def runtime_error(self, source, *out):
         buf = io.StringIO()
 
         def err(e: LoxRuntimeError):
-            buf.write(e.message)
+            buf.write(e.message + "\n")
 
-        interpreter = Interpreter(err, buf)
-        interpreter.interpret(parse(source))
+        self.interpret(Interpreter(err, buf), source)
 
         self.assertSequenceEqual(buf.getvalue().splitlines(), out)
 
@@ -227,3 +229,87 @@ counter();
         with self.assertRaises(AssertionError) as e:
             self.validate("1;", "whatever")
         self.assertEqual(str(e.exception), "Expected expression, got statements")
+
+    def test_resolved_func_var(self):
+        self.validate_print(
+            """
+var variable = "global";
+{
+  fun f() { print variable; }
+  f();
+  var variable = "local";
+  f();
+}""",
+            "global",
+            "global",
+        )
+
+        self.validate_print(
+            """
+fun global() { print "global"; }
+{
+  fun f() { global();}
+  f();
+  fun global() { print "local"; }
+  f();
+}""",
+            "global",
+            "global",
+        )
+
+    def test_resolved_closure_assign(self):
+        self.validate_print(
+            """
+var count = 0;
+{
+  fun makeCounter() {
+    fun counter() {
+      // should always be global
+      count = count + 1;
+      print count;
+    }
+    return counter;
+  }
+
+  var counter1 = makeCounter();
+  counter1(); // Should print 1
+  counter1(); // Should print 2
+
+  // This variable declaration shouldn't affect our counter.
+  var count = 10;
+
+  counter1(); // Should print 3
+  counter1(); // Should print 4
+
+  print count; // Should print 10
+}
+""",
+            "1",
+            "2",
+            "3",
+            "4",
+            "10",
+        )
+
+    def test_resolved_var(self):
+        self.runtime_error("var x = x;", "Undefined variable 'x'.")
+        self.runtime_error(
+            "{var x = x;}", "Can't read local variable in its own initializer.", "Undefined variable 'x'."
+        )
+
+
+class TestRefEqualityDict(unittest.TestCase):
+    def test_ref_equality_dict(self):
+        d = RefEqualityDict()
+        a, b = object(), object()
+
+        d[a] = 1
+        d[b] = 2
+        self.assertEqual(d[a], 1)
+        self.assertIn(a, d)
+
+        del d[a]
+        self.assertNotIn(a, d)
+        self.assertIn(b, d)
+
+        self.assertEqual(len(d), 1)

@@ -1,6 +1,6 @@
 import math
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, MutableMapping
 from time import time
 from typing import override
 
@@ -39,6 +39,7 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
     def __init__(self, runtime_error: Callable[[LoxRuntimeError], None], file=sys.stdout):
         self.global_env = Environment()
         self.environment = self.global_env
+        self.locals = RefEqualityDict[Expr, int]()
 
         self.global_env["clock"] = clock
 
@@ -70,7 +71,7 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     @override
     def visit_assign(self, assign: Assign):
-        self.environment.assign(assign.name, o := self.evaluate(assign.value))
+        self.resolved_env(assign).assign(assign.name, o := self.evaluate(assign.value))
         return o
 
     @override
@@ -168,7 +169,7 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     @override
     def visit_variable(self, variable: Variable):
-        return self.environment[variable.name]
+        return self.resolved_env(variable)[variable.name]
 
     @override
     def visit_block(self, block: Block):
@@ -229,3 +230,32 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
     def visit_while(self, w: While):
         while truthy(self.evaluate(w.condition)):
             self.execute(w.body)
+
+    def resolved_env(self, e: Expr):
+        distance = self.locals.get(e)
+        if distance is not None:
+            return self.environment.ancestor(distance)
+        return self.global_env
+
+    def resolve(self, e: Expr, n: int):
+        self.locals[e] = n
+
+
+class RefEqualityDict[K, V](MutableMapping[K, V]):
+    def __init__(self):
+        self.vals: dict[int, V] = {}
+
+    def __delitem__(self, key: K):
+        del self.vals[id(key)]
+
+    def __getitem__(self, key: K):
+        return self.vals[id(key)]
+
+    def __setitem__(self, key: K, value: V):
+        self.vals[id(key)] = value
+
+    def __iter__(self):  # pragma: no cover
+        raise RuntimeError  # Not have the keys, only the values
+
+    def __len__(self):
+        return len(self.vals)

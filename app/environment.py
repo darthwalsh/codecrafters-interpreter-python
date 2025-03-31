@@ -27,3 +27,11 @@ class Environment:
             if not self.parent:
                 raise LoxRuntimeError(name, f"Undefined variable '{name.lexeme}'.")
             self.parent.assign(name, value)
+
+    def ancestor(self, distance: int) -> Self:
+        """Retrieve the ancestor environment at a specific distance."""
+        if distance:
+            if self.parent:
+                return self.parent.ancestor(distance - 1)
+            raise RuntimeError("Impossible state")  # pragma: no cover
+        return self
