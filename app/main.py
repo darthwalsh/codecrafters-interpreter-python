@@ -5,6 +5,7 @@ from app.ast import AstPrinter
 from app.interpreter import Interpreter
 from app.parser import Parser
 from app.resolver import Resolver
+from app.runtime import LoxRuntimeError
 from app.scanner import Scanner
 
 LEXICAL_ERROR_CODE = 65
@@ -13,12 +14,14 @@ RUNTIME_ERROR_CODE = 70
 MAX_ERRORS = 9000
 
 
-exit_code = 0
+had_error = False
 
 
 def count_errors():
     """HACK to quickly crash on infinite error loops"""
+    global had_error
     for _ in range(MAX_ERRORS):
+        had_error = True
         yield
     raise RuntimeError(f"ERRORS OVER {MAX_ERRORS}!!!")  # pragma: no cover
 
@@ -26,32 +29,28 @@ def count_errors():
 error_counter = count_errors()
 
 
-def report(line, where, message):
-    global exit_code
+def report(line: int, where: str, message: str):
     next(error_counter)
 
-    exit_code = LEXICAL_ERROR_CODE
     print(f"[line {line}] Error{where}: {message}", file=sys.stderr)
 
 
-def runtime_error(e):
-    global exit_code
+def runtime_error(e: LoxRuntimeError):
     next(error_counter)
 
-    exit_code = RUNTIME_ERROR_CODE
     print(e.message, file=sys.stderr)
     print(f"[line {e.token.line}]", file=sys.stderr)
 
 
 @contextmanager
-def step(stage):
+def step(stage, exit_code=LEXICAL_ERROR_CODE):
     """Run stage using stdout or stderr then exit on errors or command.
     Could conditionally use redirect_stdout but that seemed *too* magic.
     """
     header(stage)
     final = stage == command
     yield sys.stdout if final else sys.stderr
-    if exit_code:
+    if had_error:
         sys.exit(exit_code)
     if final:
         sys.exit()
@@ -80,16 +79,17 @@ def main(source):
         if not expr:
             sys.exit("IMPOSSIBLE STATE: None returned without parse error")  # pragma: no cover
 
-        with step("evaluate") as out:
+        with step("evaluate", exit_code=RUNTIME_ERROR_CODE) as out:
             Interpreter(runtime_error, out).interpret(expr)  # No Resolver for eval expression
 
     with step("parse_statement") as out:
         stmt = parser.parse_stmt()
         print(AstPrinter().view(stmt), file=out)
 
-    with step("run") as out:
+    with step("run", exit_code=RUNTIME_ERROR_CODE) as out:
         interpreter = Interpreter(runtime_error, out)
-        Resolver(interpreter).resolve(stmt)
+        with step("resolver"):
+            Resolver(interpreter).resolve(stmt)
         interpreter.interpret(stmt)
 
     sys.exit(f"Unknown command: {command}")

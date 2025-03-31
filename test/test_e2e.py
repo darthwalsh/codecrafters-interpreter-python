@@ -8,7 +8,7 @@ from app import main
 class TestE2E(unittest.TestCase):
     def check(self, command, source, code, out, *errors):
         """Returns actual stderr"""
-        main.exit_code = 0
+        main.had_error = False
         main.command = command
 
         with redirect_stdout(io.StringIO()) as f1:
