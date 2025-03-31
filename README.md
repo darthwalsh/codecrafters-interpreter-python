@@ -6,6 +6,9 @@ Completed extensions:
 - [x] Statements & State
 - [x] Control Flow
 - [x] Functions
+- [ ] Resolving
+- [ ] Classes
+- [ ] Inheritance
 
 ## Challenge
 

@@ -65,6 +65,9 @@ class TestInterpreter(unittest.TestCase):
     def test_unary(self):
         self.validate("-73", "-73")
         self.validate("--12", "12")
+        self.validate("-0.1", "-0.1")
+        self.validate("-0", "-0")
+        self.validate("--0", "0")
 
         self.validate_single_error_expr("-nil")
 

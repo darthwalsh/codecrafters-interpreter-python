@@ -18,6 +18,8 @@ def stringify(o):
             return "nil"
         case bool():
             return str(o).lower()
+        case 0.0 if math.copysign(1, o) == -1:
+            return "-0"
         case float() if o.is_integer():
             return str(int(o))
         case func if callable(o):
