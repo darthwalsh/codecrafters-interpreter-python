@@ -48,18 +48,12 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     def interpret(self, e: Expr | list[Stmt]):
         try:
-            try:
-                if isinstance(e, list):
-                    for st in e:
-                        self.execute(st)
-                else:
-                    o = self.evaluate(e)
-                    print(stringify(o), file=self.file)
-            except ReturnUnwind as ex:
-                # TODO in chapter 11 change this from runtime to compile error
-                raise LoxRuntimeError(
-                    ex.token, f"Tried to return '{stringify(ex.value)}' outside function."
-                ) from ex
+            if isinstance(e, list):
+                for st in e:
+                    self.execute(st)
+            else:
+                o = self.evaluate(e)
+                print(stringify(o), file=self.file)
         except LoxRuntimeError as ex:
             self.runtime_error(ex)
 

@@ -4,25 +4,22 @@ from time import time
 
 from app.expression import Binary, Literal, Logical, Unary
 from app.interpreter import Interpreter, RefEqualityDict, stringify
-from app.resolver import Resolver
+from app.resolver import static_analysis
 from app.runtime import LoxRuntimeError
 from app.scanner import Token
 from app.scanner import TokenType as TT
-from test.runner import parse, reraise
+from test.runner import parse, parse_expr, reraise
 
 
 class TestInterpreter(unittest.TestCase):
     def validate(self, source, expected):
-        interpreter = Interpreter(reraise)
-        expr = parse(source)
-        if isinstance(expr, list):
-            raise AssertionError("Expected expression, got statements")
-        s = stringify(interpreter.evaluate(expr))
+        expr = parse_expr(source)
+        s = stringify(Interpreter(reraise).evaluate(expr))
         self.assertEqual(s, expected)
 
     def interpret(self, interpreter: Interpreter, source: str):
         stmt = parse(source)
-        Resolver(interpreter, on_error=reraise).resolve(stmt)
+        static_analysis(interpreter, stmt, on_error=reraise)
         interpreter.interpret(stmt)
 
     def validate_single_error_expr(self, source: str):
@@ -194,7 +191,7 @@ counter();
 
         self.validate_print("fun b() {{{ return 1; }}} print b();", "1")
 
-        self.runtime_error("return 1;", "Tried to return '1' outside function.")
+        # Don't test `return 1;` because it's a compile error
 
     def test_while(self):
         self.validate_print("var x = 0; while (x < 3) { x = x + 1; print x; }", "1", "2", "3")
@@ -224,11 +221,6 @@ counter();
                 Logical(Literal(1.0), Token(TT.PLUS, "+", 1, None), Literal(1.0))
             )
         assert str(e.exception) == "Impossible state"
-
-    def test_validate(self):
-        with self.assertRaises(AssertionError) as e:
-            self.validate("1;", "whatever")
-        self.assertEqual(str(e.exception), "Expected expression, got statements")
 
     def test_resolved_func_var(self):
         self.validate_print(

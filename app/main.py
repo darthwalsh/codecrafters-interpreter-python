@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from app.ast import AstPrinter
 from app.interpreter import Interpreter
 from app.parser import Parser
-from app.resolver import Resolver
+from app.resolver import static_analysis
 from app.runtime import LoxRuntimeError
 from app.scanner import Scanner
 
@@ -89,7 +89,7 @@ def main(source):
     with step("run", exit_code=RUNTIME_ERROR_CODE) as out:
         interpreter = Interpreter(runtime_error, out)
         with step("resolver"):
-            Resolver(interpreter).resolve(stmt)
+            static_analysis(interpreter, stmt)
         interpreter.interpret(stmt)
 
     sys.exit(f"Unknown command: {command}")

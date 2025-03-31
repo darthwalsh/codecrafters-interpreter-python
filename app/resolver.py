@@ -5,7 +5,7 @@ from typing import Self, override
 from app.expression import Assign, Expr, Variable
 from app.interpreter import Interpreter
 from app.runtime import LoxRuntimeError
-from app.statement import BaseVisitor, Block, Function, Stmt, Var
+from app.statement import BaseVisitor, Block, Function, Return, Stmt, Var
 
 
 class VarState(Enum):
@@ -29,7 +29,7 @@ class Resolver(BaseVisitor):
     @override
     def visit_block(self, block: Block) -> None:
         new_scope = Resolver(self.interpreter, self)
-        new_scope.resolve(block.statements)
+        new_scope.accept_any(block.statements)
 
     @override
     def visit_var(self, var: Var):
@@ -38,7 +38,7 @@ class Resolver(BaseVisitor):
             self.on_error(ex)
         self.scope[var.name.lexeme] = VarState.INITIALIZING
         if var.initializer:
-            self.resolve(var.initializer)
+            self.accept_any(var.initializer)
         self.scope[var.name.lexeme] = VarState.SET
 
     @override
@@ -50,7 +50,7 @@ class Resolver(BaseVisitor):
 
     @override
     def visit_assign(self, assign: Assign):
-        self.resolve(assign.value)
+        self.accept_any(assign.value)
         self.resolve_local(assign, assign.name.lexeme)
 
     @override
@@ -60,14 +60,7 @@ class Resolver(BaseVisitor):
         new_scope = Resolver(self.interpreter, self)
         new_scope.scope = {p.lexeme: VarState.SET for p in f.params}
 
-        new_scope.resolve(f.body)
-
-    def resolve(self, e: Expr | list[Stmt]):
-        if isinstance(e, Expr):
-            e.accept(self)
-            return
-        for stmt in e:
-            stmt.accept(self)
+        new_scope.accept_any(f.body)
 
     def resolve_local(self, e: Expr, name: str, n=0):
         if not self.parent:
@@ -78,4 +71,20 @@ class Resolver(BaseVisitor):
             self.parent.resolve_local(e, name, n + 1)
 
 
-# TODO https://craftinginterpreters.com/resolving-and-binding.html#resolution-errors
+class ReturnInFunc(BaseVisitor):
+    def __init__(self, on_error: Callable[[LoxRuntimeError], None]):
+        self.on_error = on_error
+
+    def visit_return(self, ret: Return):
+        self.on_error(LoxRuntimeError(ret.keyword, "Can't return from top-level code."))
+
+    def visit_function(self, f: Function):
+        pass  # Stop recursing
+
+
+def static_analysis(
+    interpreter: Interpreter, e: Expr | list[Stmt], on_error: Callable[[LoxRuntimeError], None] | None = None
+):
+    """Perform static analysis on the given statements."""
+    Resolver(interpreter, on_error=on_error).accept_any(e)
+    ReturnInFunc(on_error=on_error or interpreter.runtime_error).accept_any(e)

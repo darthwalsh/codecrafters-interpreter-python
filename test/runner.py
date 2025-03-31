@@ -24,3 +24,15 @@ def parse(source):
     if e := parse_for_errors(source, reraise):
         return e
     raise AssertionError("parse_expr returned which is impossible because of reraise")  # pragma: no cover
+
+
+def parse_expr(source):
+    tokens = Scanner(source, reraise).scan_tokens()
+    if e := Parser(tokens, reraise).parse_expr():
+        return e
+    raise AssertionError("parse_expr returned which is impossible because of reraise")  # pragma: no cover
+
+
+def parse_stmt(source):
+    tokens = Scanner(source, reraise).scan_tokens()
+    return Parser(tokens, reraise).parse_stmt()

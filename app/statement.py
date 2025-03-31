@@ -170,3 +170,10 @@ class BaseVisitor(Visitor[None], StmtVisitor[None]):
     @override
     def visit_variable(self, variable: Variable) -> None:
         pass
+
+    def accept_any(self, e: Expr | list[Stmt]) -> None:
+        if isinstance(e, Expr):
+            e.accept(self)
+        else:
+            for st in e:
+                st.accept(self)
