@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from functools import cache
 
 from app.ast import AstPrinter
+from app.config import CRAFTING_INTERPRETERS
 from app.interpreter import Interpreter
 from app.parser import Parser
 from app.resolver import static_analysis
@@ -15,8 +16,6 @@ LEXICAL_ERROR_CODE = 65
 RUNTIME_ERROR_CODE = 70
 
 MAX_ERRORS = 9000
-CRAFTING_INTERPRETERS_COMPAT = os.getenv("CRAFTING_INTERPRETERS_COMPAT")
-
 had_error = False
 
 
@@ -51,20 +50,20 @@ def runtime_error(e: LoxRuntimeError):
 
 @cache
 def verbose_stream():
-    if CRAFTING_INTERPRETERS_COMPAT:
+    if CRAFTING_INTERPRETERS():
         return open(os.devnull, "w")
     return sys.stderr
 
 
 @contextmanager
-def step(stage, exit_code=LEXICAL_ERROR_CODE):
+def step(stage, exit_code=LEXICAL_ERROR_CODE, exit_on_error=True):
     """Run stage using stdout or stderr then exit on errors or command.
     Could conditionally use redirect_stdout but that seemed *too* magic.
     """
     header(stage)
     final = stage == command
     yield sys.stdout if final else verbose_stream()
-    if had_error:
+    if had_error and exit_on_error:
         sys.exit(exit_code)
     if final:
         sys.exit()
@@ -79,7 +78,7 @@ def main(source):
     scanner = Scanner(source, report)
     tokens = scanner.scan_tokens()
 
-    with step("tokenize") as out:
+    with step("tokenize", exit_on_error=not CRAFTING_INTERPRETERS()) as out:
         for token in tokens:
             print(token, file=out)
 

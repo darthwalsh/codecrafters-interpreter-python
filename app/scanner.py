@@ -3,8 +3,9 @@ from dataclasses import dataclass
 from enum import IntEnum, auto
 from typing import Any, overload
 
-type ReportErrCB = Callable[[int, str, str], None]
+from app.config import CRAFTING_INTERPRETERS
 
+type ReportErrCB = Callable[[int, str, str], None]
 
 # https://craftinginterpreters.com/scanning.html#token-type
 class TokenType(IntEnum):
@@ -193,7 +194,11 @@ class Scanner:
         if self.take(str.isidentifier):
             return self.identifier()
 
-        self.error(f"Unexpected character: {self.pop()}")
+        if CRAFTING_INTERPRETERS():
+            self.error("Unexpected character.")
+            self.pop()
+        else:
+            self.error(f"Unexpected character: {self.pop()}")
         return None
 
     def make_token(self, type: TokenType, literal=None):

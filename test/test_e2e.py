@@ -1,6 +1,7 @@
 import io
+import os
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 
 from app import main
 
@@ -57,13 +58,22 @@ class TestE2E(unittest.TestCase):
     def test_parse(self):
         self.check("parse", "1 + 1", 0, "(+ 1.0 1.0)")
 
-        self.check(
-            "parse",
-            "1.2 1",
-            main.LEXICAL_ERROR_CODE,
-            "1.2",
-            "[line 1] Error at '1': Expected end of expression",
-        )
+        with code_crafters_mode():
+            self.check(
+                "parse",
+                "1.2 1",
+                main.LEXICAL_ERROR_CODE,
+                "1.2",
+                "[line 1] Error at '1': Expected end of expression",
+            )
+        with book_mode():
+            self.check(
+                "parse",
+                "1.2 1",
+                main.LEXICAL_ERROR_CODE,
+                "1.2",
+                "[line 1] Error at '1': Expected end of expression",
+            )
 
     def test_evaluate(self):
         self.check("evaluate", "1 + 1", 0, "2")
@@ -89,6 +99,48 @@ class TestE2E(unittest.TestCase):
         )
         self.assertIn("Operand must be a number.\n[line 2]", err)
 
+        with code_crafters_mode():
+            self.check(
+                "run",
+                "foo(a | b);",
+                main.LEXICAL_ERROR_CODE,
+                "",
+                "[line 1] Error: Unexpected character: |",
+            )
+        with book_mode():
+            self.check(
+                "run",
+                "foo(a | b);",
+                main.LEXICAL_ERROR_CODE,
+                "",
+                "[line 1] Error: Unexpected character.",
+                "[line 1] Error at 'b': Expect ')' after arguments.",
+            )
+
+
+@contextmanager
+def book_mode():
+    prev = os.getenv("CRAFTING_INTERPRETERS_COMPAT")
+    os.environ["CRAFTING_INTERPRETERS_COMPAT"] = "1"
+    try:
+        yield
+    finally:
+        if prev is None:
+            del os.environ["CRAFTING_INTERPRETERS_COMPAT"]
+        else:
+            os.environ["CRAFTING_INTERPRETERS_COMPAT"] = prev
+
+
+@contextmanager
+def code_crafters_mode():
+    prev = os.getenv("CRAFTING_INTERPRETERS_COMPAT")
+    if prev is not None:
+        del os.environ["CRAFTING_INTERPRETERS_COMPAT"]
+    try:
+        yield
+    finally:
+        if prev is not None:
+            os.environ["CRAFTING_INTERPRETERS_COMPAT"] = prev
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
