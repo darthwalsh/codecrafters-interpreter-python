@@ -1,4 +1,9 @@
+from collections.abc import Callable
+
 from app.scanner import Token
+
+type CompileErrCB = Callable[[Token, str], None]
+type RuntimeErrCB = Callable[[LoxRuntimeError], None]
 
 
 class LoxRuntimeError(Exception):

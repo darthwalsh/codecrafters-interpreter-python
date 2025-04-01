@@ -132,5 +132,5 @@ exec python3 -m app.main run $arg
 
  and can run tests like
 ```bash
-dart tool/bin/test.dart chap08_statements --interpreter run.sh
+dart tool/bin/test.dart chap11_resolving --interpreter run.sh
 ```

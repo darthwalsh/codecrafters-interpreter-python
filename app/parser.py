@@ -2,6 +2,7 @@ from collections.abc import Callable
 from contextlib import contextmanager
 
 from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable
+from app.runtime import CompileErrCB
 from app.scanner import Token, char_tokens
 from app.scanner import TokenType as TT
 from app.statement import Block, Expression, Function, If, Print, Return, Stmt, Var, While
@@ -12,10 +13,10 @@ class ParseError(Exception):
 
 
 class Parser:
-    def __init__(self, tokens: list[Token], report: Callable[[int, str, str], None]):
+    def __init__(self, tokens: list[Token], on_error: CompileErrCB):
         self.tokens = tokens
         self.current = 0
-        self.report = report
+        self.on_error = on_error
 
     def parse_stmt(self):
         statements: list[Stmt] = []
@@ -330,7 +331,5 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
             self.pop()
 
     def error(self, token: Token, message: str):
-        lexeme = f"'{token.lexeme}'" if token.type != TT.EOF else "end"
-
-        self.report(token.line, f" at {lexeme}", message)
+        self.on_error(token, message)
         return ParseError()

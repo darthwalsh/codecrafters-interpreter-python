@@ -19,7 +19,7 @@ class TestInterpreter(unittest.TestCase):
 
     def interpret(self, interpreter: Interpreter, source: str):
         stmt = parse(source)
-        static_analysis(interpreter, stmt, on_error=reraise)
+        static_analysis(interpreter, stmt, reraise)
         interpreter.interpret(stmt)
 
     def validate_single_error_expr(self, source: str):

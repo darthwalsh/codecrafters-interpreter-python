@@ -8,7 +8,8 @@ from app.interpreter import Interpreter
 from app.parser import Parser
 from app.resolver import static_analysis
 from app.runtime import LoxRuntimeError
-from app.scanner import Scanner
+from app.scanner import Scanner, Token
+from app.scanner import TokenType as TT
 
 LEXICAL_ERROR_CODE = 65
 RUNTIME_ERROR_CODE = 70
@@ -33,8 +34,12 @@ error_counter = count_errors()
 
 def report(line: int, where: str, message: str):
     next(error_counter)
-
     print(f"[line {line}] Error{where}: {message}", file=sys.stderr)
+
+
+def compile_error(token: Token, message: str):
+    lexeme = f"'{token.lexeme}'" if token.type != TT.EOF else "end"
+    report(token.line, f" at {lexeme}", message)
 
 
 def runtime_error(e: LoxRuntimeError):
@@ -49,6 +54,7 @@ def verbose_stream():
     if CRAFTING_INTERPRETERS_COMPAT:
         return open(os.devnull, "w")
     return sys.stderr
+
 
 @contextmanager
 def step(stage, exit_code=LEXICAL_ERROR_CODE):
@@ -77,7 +83,7 @@ def main(source):
         for token in tokens:
             print(token, file=out)
 
-    parser = Parser(tokens, report)
+    parser = Parser(tokens, compile_error)
 
     if command in ("parse", "evaluate"):
         expr = parser.parse_expr()
@@ -97,7 +103,7 @@ def main(source):
     with step("run", exit_code=RUNTIME_ERROR_CODE) as out:
         interpreter = Interpreter(runtime_error, out)
         with step("resolver"):
-            static_analysis(interpreter, stmt)
+            static_analysis(interpreter, stmt, compile_error)
         interpreter.interpret(stmt)
 
     sys.exit(f"Unknown command: {command}")

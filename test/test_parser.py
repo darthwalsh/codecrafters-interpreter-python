@@ -12,7 +12,7 @@ class TestParser(unittest.TestCase):
     def error(self, source, error: str, expected: str | None):
         errors = []
 
-        def report(_line, _where, message):
+        def report(_token, message):
             errors.append(message)
 
         e = parse_for_errors(source, report)

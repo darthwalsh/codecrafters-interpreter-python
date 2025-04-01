@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from enum import IntEnum, auto
 from typing import Any, overload
 
+type ReportErrCB = Callable[[int, str, str], None]
+
 
 # https://craftinginterpreters.com/scanning.html#token-type
 class TokenType(IntEnum):
@@ -94,7 +96,7 @@ class Token:
 class Scanner:
     """Lexes tokens"""
 
-    def __init__(self, source: str, report: Callable[[int, str, str], None]):
+    def __init__(self, source: str, report: ReportErrCB):
         """Take report() with DI to avoid circular import"""
         self.source = source
         self.start = 0

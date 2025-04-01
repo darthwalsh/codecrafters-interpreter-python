@@ -1,13 +1,13 @@
 import math
 import sys
-from collections.abc import Callable, MutableMapping
+from collections.abc import MutableMapping
 from time import time
 from typing import override
 
 from app import func
 from app.environment import Environment
 from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable, Visitor
-from app.runtime import LoxRuntimeError, ReturnUnwind
+from app.runtime import LoxRuntimeError, ReturnUnwind, RuntimeErrCB
 from app.scanner import TokenType as TT
 from app.statement import Block, Expression, Function, If, Print, Return, Stmt, StmtVisitor, Var, While
 
@@ -27,6 +27,7 @@ def stringify(o):
         case _:
             return str(o)
 
+
 def is_equal(x: object, y: object):
     return type(x) is type(y) and x == y
 
@@ -41,7 +42,7 @@ def clock():
 
 
 class Interpreter(Visitor[object], StmtVisitor[None]):
-    def __init__(self, runtime_error: Callable[[LoxRuntimeError], None], file=sys.stdout):
+    def __init__(self, runtime_error: RuntimeErrCB, file=sys.stdout):
         self.global_env = Environment()
         self.environment = self.global_env
         self.locals = RefEqualityDict[Expr, int]()
