@@ -3,7 +3,7 @@ import unittest
 from time import time
 
 from app.expression import Binary, Literal, Logical, Unary
-from app.interpreter import Interpreter, RefEqualityDict, stringify
+from app.interpreter import Interpreter, RefEqualityDict, stringify, truthy
 from app.resolver import static_analysis
 from app.runtime import LoxRuntimeError
 from app.scanner import Token
@@ -75,7 +75,7 @@ class TestInterpreter(unittest.TestCase):
         self.validate("!(!true)", "true")
 
         self.validate("!nil", "true")
-        self.validate("!0", "true")
+        self.validate("!0", "false")
         self.validate('!""', "false")
         self.validate('!"A"', "false")
 
@@ -131,6 +131,9 @@ class TestInterpreter(unittest.TestCase):
         self.validate_print("print nil and 2;", "nil")
         self.validate_print("print 1    or 2;", "1")
         self.validate_print("print nil  or 2;", "2")
+        
+        self.validate_print("print 0 or 2;", "0")  # 0 is truthy, so returned by or
+        self.validate_print("print 3 and 0;", "0")
 
         self.validate_print("var x = 1; true  and (x=2); print x;", "2")
         self.validate_print("var x = 1; false and (x=2); print x;", "1")
@@ -296,6 +299,19 @@ var count = 0;
             "var x = x;", "Undefined variable 'x'."
         )  # In global scope, accessing global is a runtime error
         #  Not testing `{var x = x;}` because that is resolver error
+
+
+class TestTruthy(unittest.TestCase):
+    def test_truthy(self):
+        self.assertFalse(truthy(None))
+        self.assertFalse(truthy(False))
+
+        self.assertTrue(truthy(object()))
+        self.assertTrue(truthy("non-empty"))
+        self.assertTrue(truthy(1))
+        self.assertTrue(truthy(0.1))
+        self.assertTrue(truthy(""))
+        self.assertTrue(truthy(0))
 
 
 class TestRefEqualityDict(unittest.TestCase):

@@ -34,7 +34,7 @@ def is_equal(x: object, y: object):
 
 def truthy(o: object):
     """Ruby semantics"""
-    return o not in (False, None)
+    return o is not False and o is not None
 
 
 def clock():
