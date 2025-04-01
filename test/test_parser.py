@@ -78,6 +78,10 @@ class TestParser(unittest.TestCase):
         self.validate("fun foo(a) {}", "fun foo(a) {  }")
         self.validate("fun foo(a, b) {}", "fun foo(a, b) {  }")
 
+        params = ", ".join(f"a{i}" for i in range(255))
+        big = f"fun a({params}, z) {{  }}"
+        self.error(big, "Can't have more than 255 parameters.", big)
+
     def test_return(self):
         self.validate("return a;", "return a;")  # MAYBE refactor when both eq: self.round_trip("return a;")
         self.validate("return;", "return;")

@@ -6,7 +6,7 @@ Completed extensions:
 - [x] Statements & State
 - [x] Control Flow
 - [x] Functions
-- [ ] Resolving
+- [x] Resolving
 - [ ] Classes
 - [ ] Inheritance
 
@@ -54,7 +54,6 @@ In this challenge you'll build an interpreter for [Lox](https://craftinginterpre
 - Book and CodeCrafters had some subtle differences in behavior; ust search code for `CRAFTING_INTERPRETERS()`
 
 ## Bugs
-- [ ] Have yet to implement [Chapter 11](https://craftinginterpreters.com/resolving-and-binding.html) onwards
 - [ ] main script errors out if there are compiler/runtime 9000 errors.
 ## Extra ideas
 - Use my [JustAnotherYamlParser](https://github.com/darthwalsh/JustAnotherYamlParser) BNF evaluator
@@ -131,7 +130,7 @@ cd /Users/walshca/code/codecrafters-interpreter-python
 exec python3 -m app.main run $arg
 ```
 
- and can run tests like
+Run tests through implemented chapter:
 ```bash
 dart tool/bin/test.dart chap11_resolving --interpreter run.sh
 ```

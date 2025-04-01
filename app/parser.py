@@ -121,6 +121,8 @@ block          → "{" declaration* "}" ;
         if not self.try_take(TT.RIGHT_PAREN):
             params.append(self.take(TT.IDENTIFIER, "Expect parameter name."))
             while self.try_take(TT.COMMA):
+                if len(params) >= 255:
+                    self.error(self.peek(), "Can't have more than 255 parameters.")
                 params.append(self.take(TT.IDENTIFIER, "Expect parameter name."))
             self.expect(TT.RIGHT_PAREN, after="parameters.")
 
