@@ -59,17 +59,6 @@ def clock():
 default_global = dict(clock=clock)
 
 
-class LoxClass:  # TODO: make a python class?
-    def __init__(self, name: str):
-        self.name = name
-
-    def __call__(self, *args: object) -> object:
-        raise NotImplementedError
-    
-    def __str__(self):
-        return self.name
-
-
 class Interpreter(Visitor[object], StmtVisitor[None]):
     def __init__(self, runtime_error: RuntimeErrCB, file=sys.stdout):
         self.global_env = Environment()
@@ -229,7 +218,6 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
     def visit_class(self, c: Class):
         self.environment[c.name.lexeme] = LoxClass(c.name.lexeme)
 
-
     @override
     def visit_expression(self, ex: Expression):
         self.evaluate(ex.expr)
@@ -306,3 +294,26 @@ class RefEqualityDict[K, V](MutableMapping[K, V]):
 
     def __len__(self):
         return len(self.vals)
+
+
+class LoxClass:  # TODO: make a python class?
+    def __init__(self, name: str):
+        self.name = name
+
+    def __call__(self) -> object:  # TODO *args: object
+        instance = LoxInstance(self)
+        if hasattr(self, "init"):
+            raise NotImplementedError
+        return instance
+
+    def __str__(self):
+        return self.name
+
+
+class LoxInstance:
+    def __init__(self, c: LoxClass):
+        self.c = c
+        self.fields: dict[str, object] = {}
+
+    def __str__(self):
+        return f"{self.c.name} instance"

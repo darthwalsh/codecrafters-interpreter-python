@@ -300,6 +300,9 @@ var count = 0;
         )  # In global scope, accessing global is a runtime error
         #  Not testing `{var x = x;}` because that is resolver error
 
+    def test_class_print(self):
+        self.validate_print("""class A { } print A; print A();""", "A", "A instance")
+
 
 class TestTruthy(unittest.TestCase):
     def test_truthy(self):
