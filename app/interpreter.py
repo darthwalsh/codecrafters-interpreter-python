@@ -23,7 +23,8 @@ def stringify(o):
         case float() if o.is_integer():
             return str(int(o))
         case func if callable(o):
-            return f"<fn {func.__name__}>"
+            # Would be more fun to also print native function __name__ but whatever...
+            return f"<fn {func.__name__}>" if func not in default_global.values() else "<native fn>"
         case _:
             return str(o)
 
@@ -41,13 +42,17 @@ def clock():
     return time()
 
 
+default_global = dict(clock=clock)
+
+
 class Interpreter(Visitor[object], StmtVisitor[None]):
     def __init__(self, runtime_error: RuntimeErrCB, file=sys.stdout):
         self.global_env = Environment()
         self.environment = self.global_env
         self.locals = RefEqualityDict[Expr, int]()
 
-        self.global_env["clock"] = clock
+        for name, val in default_global.items():
+            self.global_env[name] = val
 
         self.runtime_error = runtime_error
         self.file = file  # MAYBE instead of taking in the IO object, it should take a regular callback?

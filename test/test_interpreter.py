@@ -121,7 +121,7 @@ class TestInterpreter(unittest.TestCase):
         self.validate_single_error_expr('3 + "A"')
 
     def test_clock(self):
-        self.validate_print("print clock;", "<fn clock>")
+        self.validate_print("print clock;", "<native fn>")
 
         (s,) = self.run_stmt("print clock();")
         self.assertAlmostEqual(float(s), time(), places=0)  # within one sec
