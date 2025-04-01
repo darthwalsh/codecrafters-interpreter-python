@@ -223,7 +223,12 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     @override
     def visit_class(self, c: Class):
-        self.environment[c.name.lexeme] = LoxClass(c.name.lexeme)
+        clss = LoxClass(c.name.lexeme)
+        for m in c.methods:
+            if m.name.lexeme == "init":
+                raise NotImplementedError
+            setattr(clss, m.name.lexeme, self.make_function(m))
+        self.environment[c.name.lexeme] = clss
 
     @override
     def visit_expression(self, ex: Expression):
@@ -231,6 +236,9 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     @override
     def visit_function(self, f: Function):
+        self.environment[f.name.lexeme] =  self.make_function(f)
+
+    def make_function(self, f: Function):
         closure = self.environment
 
         def fun(*args: object) -> object:
@@ -244,8 +252,7 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
                 return ret.value
 
         func.shim(fun, f.name.lexeme, [p.lexeme for p in f.params])
-
-        self.environment[f.name.lexeme] = fun
+        return fun
 
     @override
     def visit_if(self, i: If):
@@ -326,6 +333,8 @@ class LoxInstance:
         try:
             return self.fields[name.lexeme]
         except KeyError:
+            if hasattr(self.c, name.lexeme):
+                return getattr(self.c, name.lexeme)
             raise LoxRuntimeError(name, f"Undefined property '{name.lexeme}'.")
 
     def __setitem__(self, name: Token, value: object):

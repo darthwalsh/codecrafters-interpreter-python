@@ -49,6 +49,8 @@ class TestResolver(unittest.TestCase):
         self.no_error("{ var x = 1; fun f(x) { } }")
         self.error("fun f(ab, ab) { }", "Error at 'ab': Already a variable with this name in this scope.")
 
+        self.error("class C { f(ab, ab) {} }", "Error at 'ab': Already a variable with this name in this scope.")
+
     def test_return(self):
         self.error("return 1;", "Error at 'return': Can't return from top-level code.")
         self.error("return;", "Error at 'return': Can't return from top-level code.")

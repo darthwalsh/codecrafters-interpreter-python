@@ -355,6 +355,14 @@ fun G() { print 2; }
         self.validate_print(prelude + "F().a = G();", "1", "2")
         self.runtime_error(prelude + "G().g = F();", "2", "Only instances have fields.")
 
+    def test_methods(self):
+        self.validate_print("class A{ hi() {print 1;} } A().hi();", "1")
+        self.validate_print("class A{ hi() {} } print A().hi;", "<fn hi>")
+        self.validate_print("class A{ hi() {print 1;} } var h = A().hi; h();", "1")
+        self.validate_print("class A{ hi() {} } var a = A(); a.hi = 3; print a.hi;", "3")
+        self.validate_print("fun F() {print 1;} class A{} var a = A(); a.hi = F; a.hi();", "1")
+        self.validate_print("class A{ hi(x) {print x;} } A().hi(1);", "1")
+
 
 class TestTruthy(unittest.TestCase):
     def test_truthy(self):

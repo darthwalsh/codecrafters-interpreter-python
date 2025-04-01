@@ -62,7 +62,8 @@ class Resolver(BaseVisitor):
     @override
     def visit_class(self, c: Class):
         self.declare(c.name, VarState.SET)
-        self.accept_any(cast(list[Stmt], c.methods))
+        for m in c.methods:
+            m.accept(self)
 
     def declare(self, t: Token, state: VarState):
         if self.parent and t.lexeme in self.scope:
@@ -79,6 +80,7 @@ class Resolver(BaseVisitor):
 
 
 class ReturnInFunc(BaseVisitor):
+    """Book says it's better to do one pass of the tree doing multiple checks. But this is much easier to read."""
     def __init__(self, on_error: CompileErrCB):
         self.on_error = on_error
 
