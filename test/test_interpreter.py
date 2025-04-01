@@ -346,6 +346,15 @@ print F;
         self.runtime_error("class A{} A.x;", "Only instances have properties.")
         self.runtime_error("class A{} A.x = 1;", "Only instances have fields.")
 
+    def test_set_order(self):
+        prelude = """
+class A {}
+fun F() { print 1; return A();}
+fun G() { print 2; }
+"""     
+        self.validate_print(prelude + "F().a = G();", "1", "2")
+        self.runtime_error(prelude + "G().g = F();", "2", "Only instances have fields.")
+
 
 class TestTruthy(unittest.TestCase):
     def test_truthy(self):
