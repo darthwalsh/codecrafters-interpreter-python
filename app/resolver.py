@@ -1,10 +1,11 @@
 from enum import Enum, auto
-from typing import Self, override
+from typing import Self, cast, override
 
 from app.expression import Assign, Expr, Variable
 from app.interpreter import Interpreter
 from app.runtime import CompileErrCB
-from app.statement import BaseVisitor, Block, Function, Return, Stmt, Var
+from app.scanner import Token
+from app.statement import BaseVisitor, Block, Class, Function, Return, Stmt, Var
 
 
 class VarState(Enum):
@@ -32,9 +33,7 @@ class Resolver(BaseVisitor):
 
     @override
     def visit_var(self, var: Var):
-        if self.parent and var.name.lexeme in self.scope:
-            self.on_error(var.name, "Already a variable with this name in this scope.")
-        self.scope[var.name.lexeme] = VarState.INITIALIZING
+        self.declare(var.name, VarState.INITIALIZING)
         if var.initializer:
             self.accept_any(var.initializer)
         self.scope[var.name.lexeme] = VarState.SET
@@ -52,15 +51,23 @@ class Resolver(BaseVisitor):
 
     @override
     def visit_function(self, f: Function) -> None:
-        self.scope[f.name.lexeme] = VarState.SET
+        self.declare(f.name, VarState.SET)
 
         new_scope = Resolver(self.interpreter, self.on_error, self)
         for p in f.params:
-            if p.lexeme in new_scope.scope:
-                self.on_error(p, "Already a variable with this name in this scope.")
-            new_scope.scope[p.lexeme] = VarState.SET
+            new_scope.declare(p, VarState.SET)
 
         new_scope.accept_any(f.body)
+
+    @override
+    def visit_class(self, c: Class):
+        self.declare(c.name, VarState.SET)
+        self.accept_any(cast(list[Stmt], c.methods))
+
+    def declare(self, t: Token, state: VarState):
+        if self.parent and t.lexeme in self.scope:
+            self.on_error(t, "Already a variable with this name in this scope.")
+        self.scope[t.lexeme] = state
 
     def resolve_local(self, e: Expr, name: str, n=0):
         if not self.parent:

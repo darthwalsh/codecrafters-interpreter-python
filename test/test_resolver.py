@@ -37,8 +37,10 @@ class TestResolver(unittest.TestCase):
             "{var x = 1; var x = 2;}", "Error at 'x': Already a variable with this name in this scope."
         )
         self.no_error("{var x = 1; {var x = 2;} }")
+        self.error("{var x = 1; fun x(){}}", "Error at 'x': Already a variable with this name in this scope.")
+        self.error("{var x = 1; class x{}}", "Error at 'x': Already a variable with this name in this scope.")
 
-    def test_func_parms(self):
+    def test_func_params(self):
         self.no_error("{ var x = 1; fun f(x) { } }")
         self.error("fun f(ab, ab) { }", "Error at 'ab': Already a variable with this name in this scope.")
 

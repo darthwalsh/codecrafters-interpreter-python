@@ -16,6 +16,7 @@
     "CDLL",
     "codecrafters",
     "Crafters",
+    "craftinginterpreters",
     "ctypes",
     "dataclass",
     "datatypes",
@@ -28,6 +29,7 @@
     "pyright",
     "pyupgrade",
     "pyyaml",
+    "realpath",
     "restype",
     "wintypes"
 ]

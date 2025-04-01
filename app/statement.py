@@ -2,7 +2,21 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import override
 
-from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable, Visitor
+from app.expression import (
+    Assign,
+    Binary,
+    Call,
+    Expr,
+    Get,
+    Grouping,
+    Literal,
+    Logical,
+    Set,
+    This,
+    Unary,
+    Variable,
+    Visitor,
+)
 from app.scanner import Token
 
 
@@ -16,6 +30,12 @@ class Stmt(ABC):
 @dataclass(frozen=True)
 class Block(Stmt):
     statements: list[Stmt]
+
+
+@dataclass(frozen=True)
+class Class(Stmt):
+    name: Token
+    methods: list["Function"]
 
 
 @dataclass(frozen=True)
@@ -66,6 +86,10 @@ class StmtVisitor[T](ABC):
         pass
 
     @abstractmethod
+    def visit_class(self, c: Class) -> T:
+        pass
+
+    @abstractmethod
     def visit_expression(self, ex: Expression) -> T:
         pass
 
@@ -99,6 +123,11 @@ class BaseVisitor(Visitor[None], StmtVisitor[None]):
     def visit_block(self, block: Block) -> None:
         for st in block.statements:
             st.accept(self)
+
+    @override
+    def visit_class(self, c: Class) -> None:
+        for m in c.methods:
+            m.accept(self)
 
     @override
     def visit_expression(self, ex: Expression) -> None:
@@ -151,6 +180,10 @@ class BaseVisitor(Visitor[None], StmtVisitor[None]):
             arg.accept(self)
 
     @override
+    def visit_get(self, get: Get) -> None:
+        get.object.accept(self)
+
+    @override
     def visit_grouping(self, grouping: Grouping) -> None:
         grouping.value.accept(self)
 
@@ -162,6 +195,15 @@ class BaseVisitor(Visitor[None], StmtVisitor[None]):
     def visit_logical(self, logical: Logical) -> None:
         logical.left.accept(self)
         logical.right.accept(self)
+
+    @override
+    def visit_set(self, set: Set) -> None:
+        set.object.accept(self)
+        set.value.accept(self)
+
+    @override
+    def visit_this(self, this: This) -> None:
+        pass
 
     @override
     def visit_unary(self, unary: Unary) -> None:

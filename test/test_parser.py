@@ -60,6 +60,15 @@ class TestParser(unittest.TestCase):
         big = f"a({'x, ' * 255}1.0)"
         self.error(big, "Can't have more than 255 arguments.", big)
 
+    def test_get(self):
+        self.validate("a.b", "a.b")
+        self.validate("(a.b).c", "(group a.b).c")
+        self.error("a.(b.c)", "Expect property name after '.'.", None)
+
+    def test_set(self):
+        self.validate("a.b = 1", "(= a.b 1.0)")
+        self.validate("A().b = c", "(= A().b c)")
+
     def test_expression(self):
         self.validate("1;", "1.0;")
 
@@ -123,6 +132,11 @@ class TestParser(unittest.TestCase):
         self.validate("{1;}{}", "{ 1.0; } {  }")
 
         self.error("{", "Expect '}' after block.", "")
+
+    def test_class(self):
+        self.validate("class A{}", "class A {  }")
+        self.validate("class Foo { bar() {} }", "class Foo { bar() {  } }")
+        self.validate("class A { b(){} c(){} }", "class A { b() {  } c() {  } }")
 
     def test_trailing(self):
         self.error("1 1", "Expected end of expression", "1.0")

@@ -1,11 +1,24 @@
 from collections.abc import Callable
 from contextlib import contextmanager
 
-from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable
+from app.expression import (
+    Assign,
+    Binary,
+    Call,
+    Expr,
+    Get,
+    Grouping,
+    Literal,
+    Logical,
+    Set,
+    This,
+    Unary,
+    Variable,
+)
 from app.runtime import CompileErrCB
 from app.scanner import Token, char_tokens
 from app.scanner import TokenType as TT
-from app.statement import Block, Expression, Function, If, Print, Return, Stmt, Var, While
+from app.statement import Block, Class, Expression, Function, If, Print, Return, Stmt, Var, While
 
 
 class ParseError(Exception):
@@ -74,10 +87,12 @@ class Parser:
         Statement Grammar
 
 program        → declaration* EOF ;
-declaration    → funDecl
+declaration    → classDecl
+               | funDecl
                | varDecl
                | statement ;
 
+classDecl      → "class" IDENTIFIER "{" function* "}" ;
 funDecl        → "fun" function ;
 function       → IDENTIFIER "(" parameters? ")" block ;
 parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
@@ -104,6 +119,8 @@ block          → "{" declaration* "}" ;
 
     def declaration(self) -> Stmt | None:
         try:
+            if self.try_take(TT.CLASS):
+                return self.class_declaration()
             if self.try_take(TT.FUN):
                 return self.fun("function")
             if self.try_take(TT.VAR):
@@ -112,6 +129,18 @@ block          → "{" declaration* "}" ;
         except ParseError:
             self.synchronize()
             return None
+        
+    def class_declaration(self):
+        name = self.take(TT.IDENTIFIER, "Expect class name.")
+        self.take(TT.LEFT_BRACE, "Expect '{' before class body.")
+
+        methods = []
+        while not self.try_take(TT.RIGHT_BRACE):
+            if self.at_end():
+                raise self.error(self.peek(), "Expect '}' after class body.")
+            methods.append(self.fun("method"))
+        return Class(name, methods)
+
 
     def fun(self, kind):
         name = self.take(TT.IDENTIFIER, f"Expect {kind} name.")
@@ -227,7 +256,7 @@ block          → "{" declaration* "}" ;
         Expression Grammar
 
 expression     → assignment ;
-assignment     → IDENTIFIER "=" assignment
+assignment     → ( call "." )? IDENTIFIER "=" assignment
                | logic_or ;
 logic_or       → logic_and ( "or" logic_and )* ;
 logic_and      → equality ( "and" equality )* ;
@@ -236,7 +265,7 @@ comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term           → factor ( ( "-" | "+" ) factor )* ;
 factor         → unary ( ( "/" | "*" ) unary )* ;
 unary          → ( "!" | "-" ) unary | call ;
-call           → primary ( "(" arguments? ")" )* ;
+call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 arguments      → expression ( "," expression )* ;
 primary        → NUMBER | STRING | "true" | "false" | "nil"
                | "(" expression ")"
@@ -251,11 +280,14 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
 
         if eq := self.try_take(TT.EQUAL):
             value = self.assignment()
-
-            if isinstance(name, Variable):
-                return Assign(name.name, value)
-
-            self.error(eq, "Invalid assignment target.")  # don't raise, can return
+            
+            match name:
+                case Variable(n):
+                    return Assign(n, value)
+                case Get(obj, name):
+                    return Set(obj, name, value)
+                case _:
+                    self.error(eq, "Invalid assignment target.")  # don't raise, can return
 
         return name
 
@@ -290,8 +322,14 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
 
     def call(self):
         e = self.primary()
-        while self.try_take(TT.LEFT_PAREN):
-            e = self.finish_call(e)
+        while True:
+            if self.try_take(TT.LEFT_PAREN):
+                e = self.finish_call(e)
+            elif self.try_take(TT.DOT):
+                name = self.take(TT.IDENTIFIER, "Expect property name after '.'.")
+                e = Get(e, name)
+            else:
+                break
         return e
 
     def finish_call(self, callee):
@@ -316,6 +354,9 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
         if e := self.try_take(TT.LEFT_PAREN):
             with self.followed_by(TT.RIGHT_PAREN, after="expression"):
                 return Grouping(self.expression())
+        
+        if e := self.try_take(TT.THIS):
+            return This(e)
 
         if e := self.try_take(TT.IDENTIFIER):
             return Variable(e)

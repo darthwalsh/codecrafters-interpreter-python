@@ -6,10 +6,24 @@ from typing import override
 
 from app import func
 from app.environment import Environment
-from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable, Visitor
+from app.expression import (
+    Assign,
+    Binary,
+    Call,
+    Expr,
+    Get,
+    Grouping,
+    Literal,
+    Logical,
+    Set,
+    This,
+    Unary,
+    Variable,
+    Visitor,
+)
 from app.runtime import LoxRuntimeError, ReturnUnwind, RuntimeErrCB
 from app.scanner import TokenType as TT
-from app.statement import Block, Expression, Function, If, Print, Return, Stmt, StmtVisitor, Var, While
+from app.statement import Block, Class, Expression, Function, If, Print, Return, Stmt, StmtVisitor, Var, While
 
 
 def stringify(o):
@@ -22,7 +36,7 @@ def stringify(o):
             return "-0"
         case float() if o.is_integer():
             return str(int(o))
-        case func if callable(o):
+        case func if callable(o) and not isinstance(o, LoxClass):
             # Would be more fun to also print native function __name__ but whatever...
             return f"<fn {func.__name__}>" if func not in default_global.values() else "<native fn>"
         case _:
@@ -43,6 +57,17 @@ def clock():
 
 
 default_global = dict(clock=clock)
+
+
+class LoxClass:  # TODO: make a python class?
+    def __init__(self, name: str):
+        self.name = name
+
+    def __call__(self, *args: object) -> object:
+        raise NotImplementedError
+    
+    def __str__(self):
+        return self.name
 
 
 class Interpreter(Visitor[object], StmtVisitor[None]):
@@ -138,6 +163,10 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
         return callee(*args)
 
     @override
+    def visit_get(self, get: Get):
+        raise NotImplementedError
+
+    @override
     def visit_grouping(self, grouping: Grouping):
         return self.evaluate(grouping.value)
 
@@ -154,6 +183,14 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
             case _:
                 raise RuntimeError("Impossible state")
         return self.evaluate(logical.right)
+
+    @override
+    def visit_set(self, set: Set):
+        raise NotImplementedError
+
+    @override
+    def visit_this(self, this: This):
+        raise NotImplementedError
 
     @override
     def visit_literal(self, literal: Literal):
@@ -187,6 +224,11 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
                 self.execute(st)
         finally:
             self.environment = orig
+
+    @override
+    def visit_class(self, c: Class):
+        self.environment[c.name.lexeme] = LoxClass(c.name.lexeme)
+
 
     @override
     def visit_expression(self, ex: Expression):

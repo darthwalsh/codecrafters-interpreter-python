@@ -1,9 +1,23 @@
 from typing import override
 
-from app.expression import Assign, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable, Visitor
+from app.expression import (
+    Assign,
+    Binary,
+    Call,
+    Expr,
+    Get,
+    Grouping,
+    Literal,
+    Logical,
+    Set,
+    This,
+    Unary,
+    Variable,
+    Visitor,
+)
 from app.scanner import Token
 from app.scanner import TokenType as TT
-from app.statement import Block, Expression, Function, If, Print, Return, Stmt, StmtVisitor, Var, While
+from app.statement import Block, Class, Expression, Function, If, Print, Return, Stmt, StmtVisitor, Var, While
 
 
 class AstPrinter(Visitor[str], StmtVisitor[str]):
@@ -25,6 +39,10 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
         return f"{self.view(call.callee)}({', '.join(self.view(a) for a in call.args)})"
 
     @override
+    def visit_get(self, get: Get):
+        return f"{self.view(get.object)}.{get.name.lexeme}"
+
+    @override
     def visit_grouping(self, grouping: Grouping):
         return self.parens("group", grouping.value)
 
@@ -32,6 +50,14 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
     def visit_logical(self, logical: Logical):
         """Uppercase is different than Binary"""
         return self.parens(logical.operator.lexeme.upper(), logical.left, logical.right)
+
+    @override
+    def visit_set(self, set: Set):
+        return self.parens(f"= {self.view(set.object)}.{set.name.lexeme}", set.value)
+
+    @override
+    def visit_this(self, this: This):
+        return "this"
 
     @override
     def visit_literal(self, literal: Literal):
@@ -56,14 +82,22 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
         return f"{{ {' '.join(self.view(s) for s in block.statements)} }}"
 
     @override
+    def visit_class(self, c: Class):
+        bodies = " ".join(self.common_function(m) for m in c.methods)
+        return f"class {c.name.lexeme} {{ {bodies} }}"
+
+    @override
     def visit_expression(self, ex: Expression):
         return f"{self.view(ex.expr)};"
 
     @override
     def visit_function(self, f: Function):
+        return f"fun {self.common_function(f)}"
+    
+    def common_function(self, f: Function):
         body = self.visit_block(Block(f.body))
         params = ", ".join(p.lexeme for p in f.params)
-        return f"fun {f.name.lexeme}({params}) {body}"
+        return f"{f.name.lexeme}({params}) {body}"
 
     @override
     def visit_if(self, i: If):
@@ -79,7 +113,7 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
     def visit_print(self, pr: Print):
         return f"print {self.view(pr.expr)};"
 
-    def parens(self, name, *exprs: Expr):
+    def parens(self, name: str, *exprs: Expr):
         return f"({name} {self.view(list(exprs))})"
 
     @override

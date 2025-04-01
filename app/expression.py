@@ -35,6 +35,12 @@ class Call(Expr):
 
 
 @dataclass(frozen=True)
+class Get(Expr):
+    object: Expr
+    name: Token
+
+
+@dataclass(frozen=True)
 class Grouping(Expr):
     value: Expr
 
@@ -49,6 +55,18 @@ class Logical(Expr):
     left: Expr
     operator: Token
     right: Expr
+
+
+@dataclass(frozen=True)
+class Set(Expr):
+    object: Expr
+    name: Token
+    value: Expr
+
+
+@dataclass(frozen=True)
+class This(Expr):
+    keyword: Token
 
 
 @dataclass(frozen=True)
@@ -76,11 +94,23 @@ class Visitor[T](ABC):
         pass
 
     @abstractmethod
+    def visit_get(self, get: Get) -> T:
+        pass
+
+    @abstractmethod
     def visit_grouping(self, grouping: Grouping) -> T:
         pass
 
     @abstractmethod
     def visit_logical(self, logical: Logical) -> T:
+        pass
+
+    @abstractmethod
+    def visit_set(self, set: Set) -> T:
+        pass
+
+    @abstractmethod
+    def visit_this(self, this: This) -> T:
         pass
 
     @abstractmethod
