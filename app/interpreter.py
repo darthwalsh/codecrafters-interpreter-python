@@ -22,6 +22,7 @@ from app.expression import (
     Visitor,
 )
 from app.runtime import LoxRuntimeError, ReturnUnwind, RuntimeErrCB
+from app.scanner import Token
 from app.scanner import TokenType as TT
 from app.statement import Block, Class, Expression, Function, If, Print, Return, Stmt, StmtVisitor, Var, While
 
@@ -153,7 +154,10 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     @override
     def visit_get(self, get: Get):
-        raise NotImplementedError
+        obj = self.evaluate(get.object)
+        if not isinstance(obj, LoxInstance):
+            raise LoxRuntimeError(get.name, "Only instances have properties.")
+        return obj[get.name]
 
     @override
     def visit_grouping(self, grouping: Grouping):
@@ -175,7 +179,10 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     @override
     def visit_set(self, set: Set):
-        raise NotImplementedError
+        obj = self.evaluate(set.object)
+        if not isinstance(obj, LoxInstance):
+            raise LoxRuntimeError(set.name, "Only instances have fields.")
+        obj[set.name] = self.evaluate(set.value)
 
     @override
     def visit_this(self, this: This):
@@ -314,6 +321,15 @@ class LoxInstance:
     def __init__(self, c: LoxClass):
         self.c = c
         self.fields: dict[str, object] = {}
+
+    def __getitem__(self, name: Token):
+        try:
+            return self.fields[name.lexeme]
+        except KeyError:
+            raise LoxRuntimeError(name, f"Undefined property '{name.lexeme}'.")
+
+    def __setitem__(self, name: Token, value: object):
+        self.fields[name.lexeme] = value
 
     def __str__(self):
         return f"{self.c.name} instance"
