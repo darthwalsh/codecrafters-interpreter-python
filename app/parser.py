@@ -129,7 +129,7 @@ block          → "{" declaration* "}" ;
         except ParseError:
             self.synchronize()
             return None
-        
+
     def class_declaration(self):
         name = self.take(TT.IDENTIFIER, "Expect class name.")
         self.take(TT.LEFT_BRACE, "Expect '{' before class body.")
@@ -140,7 +140,6 @@ block          → "{" declaration* "}" ;
                 raise self.error(self.peek(), "Expect '}' after class body.")
             methods.append(self.fun("method"))
         return Class(name, methods)
-
 
     def fun(self, kind):
         name = self.take(TT.IDENTIFIER, f"Expect {kind} name.")
@@ -280,7 +279,7 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
 
         if eq := self.try_take(TT.EQUAL):
             value = self.assignment()
-            
+
             match name:
                 case Variable(n):
                     return Assign(n, value)
@@ -354,7 +353,7 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
         if e := self.try_take(TT.LEFT_PAREN):
             with self.followed_by(TT.RIGHT_PAREN, after="expression"):
                 return Grouping(self.expression())
-        
+
         if e := self.try_take(TT.THIS):
             return This(e)
 

@@ -7,6 +7,7 @@ from app.config import CRAFTING_INTERPRETERS
 
 type ReportErrCB = Callable[[int, str, str], None]
 
+
 # https://craftinginterpreters.com/scanning.html#token-type
 class TokenType(IntEnum):
     # Single-character tokens.

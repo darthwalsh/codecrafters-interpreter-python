@@ -131,7 +131,7 @@ class TestInterpreter(unittest.TestCase):
         self.validate_print("print nil and 2;", "nil")
         self.validate_print("print 1    or 2;", "1")
         self.validate_print("print nil  or 2;", "2")
-        
+
         self.validate_print("print 0 or 2;", "0")  # 0 is truthy, so returned by or
         self.validate_print("print 3 and 0;", "0")
 
@@ -299,6 +299,43 @@ var count = 0;
             "var x = x;", "Undefined variable 'x'."
         )  # In global scope, accessing global is a runtime error
         #  Not testing `{var x = x;}` because that is resolver error
+
+    def test_mutate_param(self):
+        self.validate_print(
+            """
+var A = 1;
+{
+    fun F(A) {
+        print A;
+        A=2;
+        print A;
+    }
+    F(3);
+    print A;
+}
+""",
+            "3",
+            "2",
+            "1",
+        )
+
+    def test_reassign_func(self):
+        self.validate_print(
+            """
+fun F() {
+    print 1;
+    F = 3;
+    return 2;
+}
+print F;
+print F();
+print F;
+""",
+            "<fn F>",
+            "1",
+            "2",
+            "3",
+        )
 
     def test_class_print(self):
         self.validate_print("class A{} print A; print A();", "A", "A instance")

@@ -32,13 +32,18 @@ class TestResolver(unittest.TestCase):
         self.error("{var x = x;}", "Error at 'x': Can't read local variable in its own initializer.")
 
     def test_redeclared(self):
+        xx = "Error at 'x': Already a variable with this name in this scope."
+
         self.no_error("var x = 1; {var x = 2;}")
-        self.error(
-            "{var x = 1; var x = 2;}", "Error at 'x': Already a variable with this name in this scope."
-        )
+        self.error("{var x = 1; var x = 2;}", xx)
         self.no_error("{var x = 1; {var x = 2;} }")
-        self.error("{var x = 1; fun x(){}}", "Error at 'x': Already a variable with this name in this scope.")
-        self.error("{var x = 1; class x{}}", "Error at 'x': Already a variable with this name in this scope.")
+        self.error("{var x = 1; fun x(){}}", xx)
+        self.error("{var x = 1; class x{}}", xx)
+
+        self.no_error("{ var x = 1; fun f(x) {x;} }")
+        self.error("fun f(x) {var x = 1;}", xx)
+        self.no_error("fun x() {var x = 1;}")
+        self.no_error("fun x() {fun x() {} }")
 
     def test_func_params(self):
         self.no_error("{ var x = 1; fun f(x) { } }")

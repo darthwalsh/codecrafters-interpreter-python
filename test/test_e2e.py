@@ -142,5 +142,6 @@ def code_crafters_mode():
         if prev is not None:
             os.environ["CRAFTING_INTERPRETERS_COMPAT"] = prev
 
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

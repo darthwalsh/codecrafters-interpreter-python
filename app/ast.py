@@ -93,7 +93,7 @@ class AstPrinter(Visitor[str], StmtVisitor[str]):
     @override
     def visit_function(self, f: Function):
         return f"fun {self.common_function(f)}"
-    
+
     def common_function(self, f: Function):
         body = self.visit_block(Block(f.body))
         params = ", ".join(p.lexeme for p in f.params)
