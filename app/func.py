@@ -1,20 +1,62 @@
 import inspect
+from abc import ABC, abstractmethod
 from collections.abc import Callable
+from dataclasses import dataclass
+from typing import override
+
+from app.environment import Environment
+from app.runtime import ReturnUnwind
+from app.statement import Function
 
 
-def shim(f: Callable[..., object], name: str, params: list[str]):
-    f.__name__ = name
+class LoxCallable(ABC):
+    @abstractmethod
+    def __call__(self, intr, args: list[object]) -> object: ...
 
-    # HACK this is CPython implementation detail: https://stackoverflow.com/a/56356583/771768
-    f.__signature__ = build_signature(params)  # pyright: ignore [reportFunctionMemberAccess]
-    # Don't use __text_signature__ because then python has to parse it
-
-
-def build_signature(names: list[str]):
-    kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
-    return inspect.Signature([inspect.Parameter(name, kind) for name in names])
+    @property
+    @abstractmethod
+    def arity(self) -> int: ...
 
 
-def arity(f):
-    sig = inspect.signature(f)
-    return len(sig.parameters)
+@dataclass
+class LoxFunction(LoxCallable):
+    decl: Function
+    closure: Environment
+
+    @property
+    @override
+    def arity(self):
+        return len(self.decl.params)
+
+    @override
+    def __call__(self, intr, args: list[object]):
+        # MAYBE figure out circular type hint on intr: Interpreter i.e. https://stackoverflow.com/a/69049426/771768
+        env = Environment(self.closure)
+        for a, p in zip(args, self.decl.params, strict=True):
+            env[p.lexeme] = a
+
+        try:
+            intr.execute_block(self.decl.body, env)
+        except ReturnUnwind as e:
+            return e.value
+
+    def __str__(self):
+        return f"<fn {self.decl.name.lexeme}>"
+
+
+@dataclass
+class NativeFunction(LoxCallable):
+    func: Callable[..., object]
+
+    @property
+    @override
+    def arity(self):
+        return len(inspect.signature(self.func).parameters)
+
+    @override
+    def __call__(self, _intr, args: list[object]):
+        return self.func(*args)
+
+    def __str__(self):
+        # Would be more fun to also print native function __name__ but oh well...
+        return "<native fn>"

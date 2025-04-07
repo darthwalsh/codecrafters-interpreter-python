@@ -28,8 +28,6 @@ In this challenge you'll build an interpreter for [Lox](https://craftinginterpre
 ## Things I'm proud of
 - Pretty decent unit tests for scanner, parser, interpreter, and main modules
 - `AstPrinter` can print debug versions of all syntax, helps with dangling-else test
-- `func` models a Lox function as a normal python function
-	- [ ] Removed LoxFunction entirely, hopefully that doesn't mess with classes later in the book...
 - `Expr` has pretty minimal boilerplate, didn't need to write a source code generator!
 	- Creating e.g. `Assign` record class makes great use of `dataclass`
 	- Instead of repeated static definitions:
@@ -44,6 +42,7 @@ In this challenge you'll build an interpreter for [Lox](https://craftinginterpre
 	- Also, uses the fact that e.g. `TokenType.BANG + 1 == TokenType.BANG_EQUAL` in a clever way
 - `Parser` uses a better `private Token match(...)` pattern to combing predicate and `previous()`
 	- `take_binary` make short work for `logic_and -> equality -> comparison -> ...`
+- `Resolver` takes multiple passes of the syntax tree to find problems, which is much simpler than a do-everything class.
 - `main` uses a `with step("parse") as out: ...` context manager
 	- The CLI options `tokenize|parse|evaluate|run` kind of follow a linear flow, so would take `O(N^2)` steps to represent each in their own function.
 	- that exits if there were errors or `parse` was requested as the CLI result.
@@ -52,6 +51,11 @@ In this challenge you'll build an interpreter for [Lox](https://craftinginterpre
 	- Also context manager: `with self.parent(a=2).child() as (p, c): p.a = 1; c.assign("a", 2)` 
 	-  Use `**kw_args` for expected final parent/child env state instead of literal dicts.
 - Book and CodeCrafters had some subtle differences in behavior; ust search code for `CRAFTING_INTERPRETERS()`
+
+### Changes which didn't work out
+- ~~`func` models a Lox function as a normal python function. Removed LoxFunction entirely in d70adfb.~~
+	- In order to support `this`, we need to compose the function's environment with an outer environment with `this`.
+    - Instead of having a function, now we need to put captured variables in an format that can be accessed (a class instance with fields).
 
 ## Bugs
 - [ ] main script errors out if there are compiler/runtime 9000 errors.

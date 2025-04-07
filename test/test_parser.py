@@ -135,8 +135,10 @@ class TestParser(unittest.TestCase):
 
     def test_class(self):
         self.validate("class A{}", "class A {  }")
-        self.validate("class Foo { bar() {} }", "class Foo { bar() {  } }")
+        self.validate("class Foo { bar() {this;} }", "class Foo { bar() { this; } }")
         self.validate("class A { b(){} c(){} }", "class A { b() {  } c() {  } }")
+
+        self.error("class A{", "Expect '}' after class body.", "")
 
     def test_trailing(self):
         self.error("1 1", "Expected end of expression", "1.0")

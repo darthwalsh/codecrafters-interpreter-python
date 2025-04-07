@@ -120,27 +120,20 @@ class TestE2E(unittest.TestCase):
 
 @contextmanager
 def book_mode():
-    prev = os.getenv("CRAFTING_INTERPRETERS_COMPAT")
     os.environ["CRAFTING_INTERPRETERS_COMPAT"] = "1"
     try:
         yield
     finally:
-        if prev is None:
-            del os.environ["CRAFTING_INTERPRETERS_COMPAT"]
-        else:
-            os.environ["CRAFTING_INTERPRETERS_COMPAT"] = prev
+        del os.environ["CRAFTING_INTERPRETERS_COMPAT"]
 
 
 @contextmanager
 def code_crafters_mode():
-    prev = os.getenv("CRAFTING_INTERPRETERS_COMPAT")
-    if prev is not None:
-        del os.environ["CRAFTING_INTERPRETERS_COMPAT"]
     try:
-        yield
-    finally:
-        if prev is not None:
-            os.environ["CRAFTING_INTERPRETERS_COMPAT"] = prev
+        del os.environ["CRAFTING_INTERPRETERS_COMPAT"]
+    except KeyError:
+        pass
+    yield
 
 
 if __name__ == "__main__":  # pragma: no cover

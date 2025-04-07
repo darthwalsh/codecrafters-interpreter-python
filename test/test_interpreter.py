@@ -342,6 +342,7 @@ print F;
 
     def test_class_fields(self):
         self.validate_print("class A{} var a = A(); a.x = 1; print a.x;", "1")
+        self.validate_print("class A{} var a = A(); a.x = nil; print a.x;", "nil")
         self.runtime_error("class A{} var a = A(); a.y;", "Undefined property 'y'.")
         self.runtime_error("class A{} A.x;", "Only instances have properties.")
         self.runtime_error("class A{} A.x = 1;", "Only instances have fields.")
@@ -351,7 +352,7 @@ print F;
 class A {}
 fun F() { print 1; return A();}
 fun G() { print 2; }
-"""     
+"""
         self.validate_print(prelude + "F().a = G();", "1", "2")
         self.runtime_error(prelude + "G().g = F();", "2", "Only instances have fields.")
 
@@ -362,6 +363,26 @@ fun G() { print 2; }
         self.validate_print("class A{ hi() {} } var a = A(); a.hi = 3; print a.hi;", "3")
         self.validate_print("fun F() {print 1;} class A{} var a = A(); a.hi = F; a.hi();", "1")
         self.validate_print("class A{ hi(x) {print x;} } A().hi(1);", "1")
+
+    def test_this(self):
+        self.validate_print("class C { f() { return this; } } print C().f();", "C instance")
+
+    def test_this_detached(self):
+        self.validate_print(
+            """
+class C { f() { return this.x; } }
+var c = C();
+var f = c.f;
+c.x = 4;
+print f();
+
+var c2 = C();
+c2.f = f;
+print c2.f();
+""",
+            "4",
+            "4",
+        )
 
 
 class TestTruthy(unittest.TestCase):

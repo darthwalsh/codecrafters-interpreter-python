@@ -4,7 +4,7 @@ from collections.abc import MutableMapping
 from time import time
 from typing import override
 
-from app import func
+from app.classes import LoxClass, LoxInstance
 from app.environment import Environment
 from app.expression import (
     Assign,
@@ -21,8 +21,8 @@ from app.expression import (
     Variable,
     Visitor,
 )
+from app.func import LoxCallable, LoxFunction, NativeFunction
 from app.runtime import LoxRuntimeError, ReturnUnwind, RuntimeErrCB
-from app.scanner import Token
 from app.scanner import TokenType as TT
 from app.statement import Block, Class, Expression, Function, If, Print, Return, Stmt, StmtVisitor, Var, While
 
@@ -37,9 +37,6 @@ def stringify(o):
             return "-0"
         case float() if o.is_integer():
             return str(int(o))
-        case func if callable(o) and not isinstance(o, LoxClass):
-            # Would be more fun to also print native function __name__ but whatever...
-            return f"<fn {func.__name__}>" if func not in default_global.values() else "<native fn>"
         case _:
             return str(o)
 
@@ -53,11 +50,7 @@ def truthy(o: object):
     return o is not False and o is not None
 
 
-def clock():
-    return time()
-
-
-default_global = dict(clock=clock)
+default_global = dict(clock=NativeFunction(time))
 
 
 class Interpreter(Visitor[object], StmtVisitor[None]):
@@ -144,13 +137,14 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
         callee = self.evaluate(call.callee)
         args = [self.evaluate(a) for a in call.args]
 
-        if not callable(callee):
+        if not isinstance(callee, LoxCallable):
             raise LoxRuntimeError(call.paren, "Can only call functions and classes.")
-        callee_arity = func.arity(callee)
-        if len(args) != callee_arity:
-            raise LoxRuntimeError(call.paren, f"Expected {callee_arity} arguments but got {len(args)}.")
 
-        return callee(*args)
+        # Apparently the pythonic "call the function and handle TypeError" won't work unless you want to parse TypeError error message...
+        if len(args) != callee.arity:
+            raise LoxRuntimeError(call.paren, f"Expected {callee.arity} arguments but got {len(args)}.")
+
+        return callee(self, args)
 
     @override
     def visit_get(self, get: Get):
@@ -186,7 +180,7 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     @override
     def visit_this(self, this: This):
-        raise NotImplementedError
+        return self.resolved_env(this)[this.keyword]
 
     @override
     def visit_literal(self, literal: Literal):
@@ -223,12 +217,11 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     @override
     def visit_class(self, c: Class):
-        clss = LoxClass(c.name.lexeme)
-        for m in c.methods:
-            if m.name.lexeme == "init":
-                raise NotImplementedError
-            setattr(clss, m.name.lexeme, self.make_function(m))
-        self.environment[c.name.lexeme] = clss
+        methods = {m.name.lexeme: LoxFunction(m, self.environment) for m in c.methods}
+        if "init" in methods:
+            raise NotImplementedError  # pragma: no cover  # TODO(init)
+
+        self.environment[c.name.lexeme] = LoxClass(c.name.lexeme, methods)
 
     @override
     def visit_expression(self, ex: Expression):
@@ -236,23 +229,7 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
 
     @override
     def visit_function(self, f: Function):
-        self.environment[f.name.lexeme] =  self.make_function(f)
-
-    def make_function(self, f: Function):
-        closure = self.environment
-
-        def fun(*args: object) -> object:
-            env = Environment(closure)
-            for a, p in zip(args, f.params):
-                env[p.lexeme] = a
-
-            try:
-                self.execute_block(f.body, env)
-            except ReturnUnwind as ret:
-                return ret.value
-
-        func.shim(fun, f.name.lexeme, [p.lexeme for p in f.params])
-        return fun
+        self.environment[f.name.lexeme] = LoxFunction(f, self.environment)
 
     @override
     def visit_if(self, i: If):
@@ -308,37 +285,3 @@ class RefEqualityDict[K, V](MutableMapping[K, V]):
 
     def __len__(self):
         return len(self.vals)
-
-
-class LoxClass:  # TODO: make a python class?
-    def __init__(self, name: str):
-        self.name = name
-
-    def __call__(self) -> object:  # TODO *args: object
-        instance = LoxInstance(self)
-        if hasattr(self, "init"):
-            raise NotImplementedError
-        return instance
-
-    def __str__(self):
-        return self.name
-
-
-class LoxInstance:
-    def __init__(self, c: LoxClass):
-        self.c = c
-        self.fields: dict[str, object] = {}
-
-    def __getitem__(self, name: Token):
-        try:
-            return self.fields[name.lexeme]
-        except KeyError:
-            if hasattr(self.c, name.lexeme):
-                return getattr(self.c, name.lexeme)
-            raise LoxRuntimeError(name, f"Undefined property '{name.lexeme}'.")
-
-    def __setitem__(self, name: Token, value: object):
-        self.fields[name.lexeme] = value
-
-    def __str__(self):
-        return f"{self.c.name} instance"

@@ -1,7 +1,6 @@
 import os
 import sys
 from contextlib import contextmanager
-from functools import cache
 
 from app.ast import AstPrinter
 from app.config import CRAFTING_INTERPRETERS
@@ -48,7 +47,6 @@ def runtime_error(e: LoxRuntimeError):
     print(f"[line {e.token.line}]", file=sys.stderr)
 
 
-@cache
 def verbose_stream():
     if CRAFTING_INTERPRETERS():
         return open(os.devnull, "w")
