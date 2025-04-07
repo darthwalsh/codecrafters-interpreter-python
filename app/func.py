@@ -1,4 +1,3 @@
-import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -46,16 +45,18 @@ class LoxFunction(LoxCallable):
 
 @dataclass
 class NativeFunction(LoxCallable):
-    func: Callable[..., object]
+    """Allows function that take no arguments"""
+    func: Callable[[], object]
 
     @property
     @override
     def arity(self):
-        return len(inspect.signature(self.func).parameters)
+        # Would use len(inspect.signature(self.func).parameters) but that doesn't work on built-in functions
+        return 0
 
     @override
-    def __call__(self, _intr, args: list[object]):
-        return self.func(*args)
+    def __call__(self, _intr, _args):
+        return self.func()
 
     def __str__(self):
         # Would be more fun to also print native function __name__ but oh well...
