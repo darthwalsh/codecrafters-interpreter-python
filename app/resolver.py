@@ -89,9 +89,8 @@ class Resolver(BaseVisitor):
             self.parent.resolve_local(e, name, n + 1)
 
 
+"""Book says it's better to do one pass of the tree doing multiple checks. But SRP and this is much easier to read."""
 class ReturnInFunc(BaseVisitor):
-    """Book says it's better to do one pass of the tree doing multiple checks. But this is much easier to read."""
-
     def __init__(self, on_error: CompileErrCB):
         self.on_error = on_error
 
@@ -116,9 +115,35 @@ class ThisOutsideClass(BaseVisitor):
     def visit_class(self, c: Class):
         pass  # Stop recursing
 
+class ReturnInInit(BaseVisitor):
+    class ReturnValue(BaseVisitor):
+        def __init__(self, on_error: CompileErrCB):
+            self.on_error = on_error
+
+        @override
+        def visit_return(self, ret: Return):
+            if ret.value:
+                self.on_error(ret.keyword, "Can't return a value from an initializer.")
+            super().visit_return(ret)
+
+        @override
+        def visit_function(self, f: Function):
+            pass  # Stop recursing
+
+    def __init__(self, on_error: CompileErrCB):
+        self.on_error = on_error
+
+    @override
+    def visit_class(self, c: Class):
+        for m in c.methods:
+            if m.name.lexeme == "init":
+                self.ReturnValue(self.on_error).accept_any(m.body)
+        super().visit_class(c)
+
 
 def static_analysis(interpreter: Interpreter, e: Expr | list[Stmt], on_error: CompileErrCB):
     """Perform static analysis on the given statements."""
     Resolver(interpreter, on_error).accept_any(e)
     ReturnInFunc(on_error).accept_any(e)
     ThisOutsideClass(on_error).accept_any(e)
+    ReturnInInit(on_error).accept_any(e)

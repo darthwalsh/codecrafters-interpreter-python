@@ -66,3 +66,18 @@ class TestResolver(unittest.TestCase):
         self.no_error("class C { f() { this; } }")
         self.error("this;", "Error at 'this': Can't use 'this' outside of a class.")
         self.no_error("class C { f() { fun cb() { this; } }}")
+
+    def test_init_return(self):
+        self.no_error("class C { init() { return; } }")
+        self.no_error("class C { init() { fun x() { return 1; } } }")
+        self.no_error("fun init() { return 1; }")
+        self.no_error("class C { init() { class CC { init() { return; } } } }")
+        self.error(
+            "class C { init() { return 1; } }",
+            "Error at 'return': Can't return a value from an initializer.",
+        )
+        self.error(
+            "class C { init() { class CC { init() { return 1; } } } }",
+            "Error at 'return': Can't return a value from an initializer.",
+        )
+        self.no_error("class C { init() { class CC { f() { return 1; } } } }")
