@@ -7,7 +7,7 @@ Completed extensions:
 - [x] Control Flow
 - [x] Functions
 - [x] Resolving
-- [ ] Classes
+- [x] Classes
 - [ ] Inheritance
 
 ## Challenge
@@ -56,6 +56,7 @@ In this challenge you'll build an interpreter for [Lox](https://craftinginterpre
 - ~~`func` models a Lox function as a normal python function. Removed LoxFunction entirely in d70adfb.~~
 	- In order to support `this`, we need to compose the function's environment with an outer environment with `this`.
     - Instead of having a function, now we need to put captured variables in an format that can be accessed (a class instance with fields).
+- Tried to compose `LoxFunction` for `init()` returning `this` but ended up with a subclass as the "simplest" solution
 
 ## Bugs
 - [ ] main script errors out if there are compiler/runtime 9000 errors.
@@ -131,10 +132,11 @@ Create an executable in craftinginterpreters folder
 arg=$(realpath $1)
 
 cd /Users/walshca/code/codecrafters-interpreter-python
+export CRAFTING_INTERPRETERS_COMPAT=1
 exec python3 -m app.main run $arg
 ```
 
 Run tests through implemented chapter:
 ```bash
-dart tool/bin/test.dart chap11_resolving --interpreter run.sh
+dart tool/bin/test.dart chap12_classes --interpreter run.sh
 ```

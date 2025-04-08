@@ -343,6 +343,7 @@ print F;
     def test_class_fields(self):
         self.validate_print("class A{} var a = A(); a.x = 1; print a.x;", "1")
         self.validate_print("class A{} var a = A(); a.x = nil; print a.x;", "nil")
+        self.validate_print("class A{} var a = A(); print a.x = 1;", "1")
         self.runtime_error("class A{} var a = A(); a.y;", "Undefined property 'y'.")
         self.runtime_error("class A{} A.x;", "Only instances have properties.")
         self.runtime_error("class A{} A.x = 1;", "Only instances have fields.")

@@ -176,7 +176,8 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
         obj = self.evaluate(set.object)
         if not isinstance(obj, LoxInstance):
             raise LoxRuntimeError(set.name, "Only instances have fields.")
-        obj[set.name] = self.evaluate(set.value)
+        value = obj[set.name] = self.evaluate(set.value)
+        return value
 
     @override
     def visit_this(self, this: This):
