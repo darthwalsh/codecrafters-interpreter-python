@@ -1,11 +1,13 @@
 from dataclasses import dataclass, field
-from typing import override
+from typing import TYPE_CHECKING, override
 
-from app.environment import Environment
 from app.func import LoxCallable, LoxFunction
 from app.runtime import LoxRuntimeError
 from app.scanner import Token
+from app.scanner import TokenType as TT
 
+if TYPE_CHECKING:  # pragma: no cover
+    from app.interpreter import Interpreter
 
 @dataclass
 class LoxClass(LoxCallable):
@@ -15,17 +17,27 @@ class LoxClass(LoxCallable):
     @property
     @override
     def arity(self):
-        return 0  # TODO(init)
+        if init := self.methods.get("init"):
+            return init.arity
+        return 0
 
     @override
-    def __call__(self, _intr, _args) -> object:  # TODO(init) args: object
+    def __call__(self, intr: "Interpreter", args: list[object]) -> object:
         instance = LoxInstance(self)
-        if hasattr(self, "init"):
-            raise NotImplementedError  # pragma: no cover  # TODO(init)
+        if init := self.methods.get("init"):
+            init.bind(instance)(intr, args)
         return instance
 
     def __str__(self):
         return self.name
+
+
+class InitFunction(LoxFunction):
+    @override
+    def __call__(self, intr: "Interpreter", args: list[object]):
+        # Can't just use super()() https://stackoverflow.com/a/72722823/771768
+        super().__call__(intr, args)
+        return self.closure[Token(TT.THIS, "this", -1, -1)]
 
 
 @dataclass
@@ -43,9 +55,7 @@ class LoxInstance:
             m = self.clss.methods[name.lexeme]
         except KeyError:
             raise LoxRuntimeError(name, f"Undefined property '{name.lexeme}'.")
-        wrapped = Environment(m.closure)
-        wrapped["this"] = self
-        return LoxFunction(m.decl, wrapped)
+        return m.bind(self)
 
     def __setitem__(self, name: Token, value: object):
         self.fields[name.lexeme] = value

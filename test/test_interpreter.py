@@ -384,6 +384,17 @@ print c2.f();
             "4",
         )
 
+    def test_init(self):
+        self.validate_print("class A{ init() { print 1 ;} } A();", "1")
+        self.validate_print("class A{ init() { this.x = 1;} } print A().x;", "1")
+
+        self.runtime_error("class A{} A(1);", "Expected 0 arguments but got 1.")
+        self.runtime_error("class A{ init(x) { } } A();", "Expected 1 arguments but got 0.")
+
+    def test_init_returns(self):
+        self.validate_print("class A{ init() {} } print A().init();", "A instance")
+        self.validate_print("class A{ init() {return;} } print A().init();", "A instance")
+
 
 class TestTruthy(unittest.TestCase):
     def test_truthy(self):

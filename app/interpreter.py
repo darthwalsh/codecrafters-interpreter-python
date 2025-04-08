@@ -4,7 +4,7 @@ from collections.abc import MutableMapping
 from time import time
 from typing import override
 
-from app.classes import LoxClass, LoxInstance
+from app.classes import InitFunction, LoxClass, LoxInstance
 from app.environment import Environment
 from app.expression import (
     Assign,
@@ -218,9 +218,8 @@ class Interpreter(Visitor[object], StmtVisitor[None]):
     @override
     def visit_class(self, c: Class):
         methods = {m.name.lexeme: LoxFunction(m, self.environment) for m in c.methods}
-        if "init" in methods:
-            raise NotImplementedError  # pragma: no cover  # TODO(init)
-
+        if init := methods.get("init"):
+            methods["init"] = InitFunction(init.decl, init.closure)
         self.environment[c.name.lexeme] = LoxClass(c.name.lexeme, methods)
 
     @override

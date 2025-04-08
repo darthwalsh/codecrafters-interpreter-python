@@ -1,16 +1,19 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from app.environment import Environment
 from app.runtime import ReturnUnwind
 from app.statement import Function
 
+if TYPE_CHECKING:  # pragma: no cover
+    from app.classes import LoxInstance
+    from app.interpreter import Interpreter
 
 class LoxCallable(ABC):
     @abstractmethod
-    def __call__(self, intr, args: list[object]) -> object: ...
+    def __call__(self, intr: "Interpreter", args: list[object]) -> object: ...
 
     @property
     @abstractmethod
@@ -28,8 +31,7 @@ class LoxFunction(LoxCallable):
         return len(self.decl.params)
 
     @override
-    def __call__(self, intr, args: list[object]):
-        # MAYBE figure out circular type hint on intr: Interpreter i.e. https://stackoverflow.com/a/69049426/771768
+    def __call__(self, intr: "Interpreter", args: list[object]):
         env = Environment(self.closure)
         for a, p in zip(args, self.decl.params, strict=True):
             env[p.lexeme] = a
@@ -38,6 +40,12 @@ class LoxFunction(LoxCallable):
             intr.execute_block(self.decl.body, env)
         except ReturnUnwind as e:
             return e.value
+        
+    def bind(self, instance: "LoxInstance"):
+        """Bind a method to an instance"""
+        env = Environment(self.closure)
+        env["this"] = instance
+        return self.__class__(self.decl, env)  # Create instance of subclass type
 
     def __str__(self):
         return f"<fn {self.decl.name.lexeme}>"
